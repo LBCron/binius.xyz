@@ -1380,7 +1380,7 @@ IronSpartan then emits two linear queries, $(t_{\textsf{pre}}, s_{\textsf{pre}})
 Three leakage sources must be closed to make IronSpartan honest-verifier zero-knowledge:
 \begin{itemize}
 \item the \emph{constraint-check sumcheck}, whose round polynomials depend on the committed segments; we mask it with a Libra-style masking polynomial committed as an auxiliary oracle $\pi_g$ (\S\ref{sec:zk-sumcheck-machinery});
-\item the \emph{oracle openings} of $z_{\textsf{pre}}$, $z_{\textsf{wit}}$, and $\pi_g$ performed by the compiler's BaseFold instance; these are masked by the padding and mask oracles of the Batched ZK BaseFold compiler (\S\ref{sec:batched-zk-basefold});
+\item the \emph{oracle openings} of $z_{\textsf{pre}}$, $z_{\textsf{wit}}$, and $\pi_g$ performed by the compiler's BaseFold instance; these are blinded by the padding and mask of the Batched ZK BaseFold compiler (\S\ref{sec:batched-zk-basefold});
 \item the revealed products $(a, b, c)$, witness-dependent linear images of the assignment; we mask these with dummy constraints (\S\ref{sec:dummy-masking}).
 \end{itemize}
 The first and third are intrinsic to the LIOP and are treated below; the second is supplied by the compiler. Instantiated over binary fields via the binary BaseFold of \S\ref{sec:basefold} (FRI-Binius~\cite{Diamond:2025ab}), the result runs over the same fields as the rest of this document.
