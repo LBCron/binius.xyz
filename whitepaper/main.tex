@@ -122,6 +122,14 @@ where each factor $(1 - x_i, x_i)$ is in $K^2$. The entry of $\textsf{TensorExpa
 \]
 taking value $1$ on the diagonal of $\BB_n \times \BB_n$ and $0$ elsewhere; the multilinear extension of any $f \colon \BB_n \to K$ decomposes as $\mle{f}(X) = \sum_{u \in \BB_n} f(u) \cdot \mle{\eq}_n(u, X)$. The characteristic-$2$ form uses only $n - 1$ multiplications, so $\mle{\eq}_n(r, r')$ can be evaluated in $O(n)$ field operations at any pair of points $r, r' \in K^n$. We abbreviate $\mle{\eq}_1$ as $\mle{\eq}$, and also write the bare symbol $\mle{\eq}$ when referring to the family generically; an \emph{applied} indicator of arity $n \geq 2$ always carries its subscript.
 
+\item[Linear interpolation] For a scalar $x$ and values $v_0, v_1$, we write $\textsf{lerp}(x, v_0, v_1) \coloneqq \mle{\eq}(0, x) \cdot v_0 + \mle{\eq}(1, x) \cdot v_1 = (1 - x) \cdot v_0 + x \cdot v_1$, the linear interpolation between $v_0$ and $v_1$ that selects $v_x$ when $x \in \BB_1$.
+
+\item[Prefix equality indicator] For $0 \le m \le 2^n$, the \emph{prefix equality indicator} $\mle{\eq}_{< m}(X, Y)$ is the $2n$-variate multilinear that agrees with $\mle{\eq}_n(X, y)$ at every $y \in \BB_n$ with $y < m$ and vanishes at every $y \in \BB_n$ with $y \ge m$; its partial evaluation $\mle{\eq}_{< m}(r, \cdot)$ is the multilinear extension of the length-$m$ prefix of $\textsf{TensorExpand}_n(r)$, zero-extended. For $m = 2^n$ it is $\mle{\eq}_n$. For $m < 2^n$ with binary digits $m = \sum_k m_k 2^k$, it is computed inductively over the coordinates from the lowest up: writing $P_k$ for the prefix indicator of $m \bmod 2^k$ on the low $k$ coordinates and $E_k \coloneqq \mle{\eq}_k(X_{< k}, Y_{< k})$, so that $P_0 = 0$ and $E_0 = 1$,
+\[
+  P_{k + 1} = (1 - X_k)(1 - Y_k) \cdot \textsf{lerp}(m_k, P_k, E_k) + X_k Y_k \cdot \textsf{lerp}(m_k, 0, P_k), \qquad E_{k + 1} = \mle{\eq}(X_k, Y_k) \cdot E_k,
+\]
+and $\mle{\eq}_{< m} = P_n$. The recursion reads off the top coordinate of $y \in \BB_{k + 1}$: when $m_k = 0$ the prefix is the lower prefix with $y_k = 0$; when $m_k = 1$ it is the whole lower cube with $y_k = 0$ together with the lower prefix with $y_k = 1$; and the coordinate-$k$ factor $\mle{\eq}(X_k, y_k) \cdot \mle{\eq}(Y_k, y_k)$ is $(1 - X_k)(1 - Y_k)$ or $X_k Y_k$ according to $y_k$. Each step costs $O(1)$ operations, so the indicator is evaluated at any $(r, r') \in K^n \times K^n$ in $O(n)$ field operations. Each step multiplies the running values by a factor in $X_k$ times a factor in $Y_k$, a structure \S\ref{sec:ring-switching} uses.
+
 \item[Infinity hypercube] The \emph{infinity hypercube} $\set{0, \infty}^n$~\cite[\S 3]{cryptoeprint:2026/762} is the product set whose coordinates are $0$ or $\infty$, where evaluating a polynomial of individual degree at most $d$ at $\infty$ in a coordinate reads the coefficient of that coordinate's top power $X_j^d$. A multilinear evaluated on $\set{0, \infty}^n$ yields its monomial coefficients, so $\sum_{x \in \set{0, \infty}^n} \mle{u}(x) \cdot \mle{w}(x)$ is the inner product of the monomial coefficient vectors of $\mle{u}$ and $\mle{w}$, and summing out a coordinate a polynomial does not depend on leaves it unchanged. A sumcheck over $\set{0, \infty}^n$ is Protocol~\ref{prot:sumcheck} with the consistency check $R^{(i)}(0) + R^{(i)}(\infty) = s^{(i)}$, where $R^{(i)}(\infty)$ is the leading coefficient of $R^{(i)}$; its soundness error is that of the sumcheck over $\BB_n$.
 
 \item[Vector arguments] We routinely flatten vector arguments into scalar ones: when a function $g$ expects $a + b$ scalar inputs and $u \in K^a$, $v \in K^b$, we write $g(u, v)$ for $g(u_0, \ldots, u_{a - 1}, v_0, \ldots, v_{b - 1})$, listing the coordinates of each vector in order, and we group consecutive scalar arguments back into vectors when convenient. This abuse is most frequent for the equality indicator $\mle{\eq}_n$, whose two length-$n$ vector arguments are often written out coordinate-wise (as in $\mle{\eq}_3(\rho_0, \rho_1, \rho_2, u_0, u_1, u_2)$).
@@ -259,26 +267,21 @@ at the resulting challenge $r_{\widehat{i}} \in K$ recovers an ordinary multilin
 A \emph{linear interactive oracle proof} (LIOP) is an interactive protocol between a prover $P$ and a verifier $V$ for a relation $R \subset \set{0, 1}^* \times \set{0, 1}^*$. Both parties take as input a public instance $x$; the prover additionally holds a witness $w$ with $(x, w) \in R$. The protocol proceeds in rounds.
 
 \begin{itemize}
-\item In each round, the prover may send one or more \emph{oracle messages} together with a possibly empty non-oracle message. The $i$-th oracle message is a function $\pi_i \colon \BB_{n_i} \to K$ for some $n_i \geq 0$ fixed by the protocol; equivalently, $\pi_i$ is a vector in $K^{2^{n_i}}$. The verifier does not access $\pi_i$ directly during the protocol. The protocol additionally fixes, for each oracle, a \emph{randomizable support} $I_i \subseteq \BB_{n_i}$, a (possibly empty) subset of coordinates whose values the prover does not choose (see below); unless stated otherwise $I_i = \emptyset$.
+\item In each round, the prover may send one or more \emph{oracle messages} together with a possibly empty non-oracle message. The $i$-th oracle message is a vector $\pi_i \in K^{n_i}$ of some length $n_i \geq 1$ fixed by the protocol, not necessarily a power of two; we write $\ell_i \coloneqq \lceil \log_2 n_i \rceil$ for its \emph{variable count}, identify $\set{0, \ldots, n_i - 1}$ with the first $n_i$ vertices of $\BB_{\ell_i}$, and regard $\pi_i$ as a function on those vertices. The verifier does not access $\pi_i$ directly during the protocol.
 \item The verifier responds with a challenge sampled uniformly from $K$ (or, when convenient, from some fixed challenge space).
-\item After all rounds, the verifier issues a set of \emph{linear queries}. The $j$-th linear query is specified by one multilinear polynomial $t_{j, i} \in K[X_0, \ldots, X_{n_i - 1}]^\mlin$ per oracle $\pi_i$, together with a target value $s_j \in K$, and is \emph{satisfied} if
+\item After all rounds, the verifier issues a set of \emph{linear queries}. The $j$-th linear query is specified by one \emph{operand} per oracle $\pi_i$, a multilinear polynomial $t_{j, i} \in K[X_0, \ldots, X_{\ell_i - 1}]^\mlin$ that \emph{vanishes above the oracle}: $t_{j, i}(v) = 0$ for every $v \in \BB_{\ell_i}$ with $v \ge n_i$. Together with a target value $s_j \in K$, the query is \emph{satisfied} if
 \[
-  \sum_i \sum_{v \in \BB_{n_i}} t_{j, i}(v) \cdot \pi_i(v) = s_j;
+  \sum_i \langle \pi_i, t_{j, i} \rangle \coloneqq \sum_i \sum_{v = 0}^{n_i - 1} t_{j, i}(v) \cdot \pi_i(v) = s_j;
 \]
-i.e., the sum over the oracles of the inner product of each with the table of hypercube evaluations of its operand $t_{j, i}$ equals the target. Most queries involve a single oracle $\pi_{i_j}$; we then write the query as $(t_j, s_j)$ on $\pi_{i_j}$ and omit the vanishing operands. The verifier accepts iff all linear queries are satisfied. The list of queries is a deterministic function of the transcript.
+i.e., the sum over the oracles of the inner product of each with the table of hypercube evaluations of its operand equals the target. Most queries involve a single oracle $\pi_{i_j}$; we then write the query as $(t_j, s_j)$ on $\pi_{i_j}$ and omit the vanishing operands. The verifier accepts iff all linear queries are satisfied. The list of queries is a deterministic function of the transcript.
 \end{itemize}
 
-A \emph{padding assignment} is a tuple $\textsf{pad} = (\textsf{pad}_i)_i$ of maps $\textsf{pad}_i \colon I_i \to K$, one for each oracle. The honest prover takes a padding assignment as an additional input and is \emph{constrained} by it: every oracle it sends satisfies $\pi_i(v) = \textsf{pad}_i(v)$ for all $v \in I_i$, and its remaining messages are computed consistently with these values. When every $I_i$ is empty, the only padding assignment is the empty one and the constraint is vacuous.
-
-The LIOP is \emph{complete} if for every $(x, w) \in R$ and every padding assignment $\textsf{pad}$, the honest execution of $P(x, w, \textsf{pad})$ with $V(x)$ makes $V$ accept with probability $1$, and \emph{sound with error $\varepsilon$} if for every $x$ such that $(x, w) \notin R$ for all $w$ and every (possibly cheating) prover $P^*$, the probability that $V$ accepts is at most $\varepsilon$. Knowledge soundness is defined analogously via an efficient extractor. A cheating prover is subject to no padding constraint.
-
-\paragraph{Randomizable support.}
-Because completeness holds for every padding assignment, the values of $\pi_i$ on $I_i$ are not the prover's to choose: whoever runs the honest prover may fix them arbitrarily, in particular uniformly at random, without affecting acceptance, and soundness already quantifies over all provers. The zero-knowledge compiler of \S\ref{sec:zk-compiler} relies on this flexibility, both to hide the codeword openings and to merge oracles efficiently. The LIOPs of this document take $I_i = \emptyset$; the compiler introduces the supports it needs.
+The LIOP is \emph{complete} if for every $(x, w) \in R$ the honest execution of $P(x, w)$ with $V(x)$ makes $V$ accept with probability $1$, and \emph{sound with error $\varepsilon$} if for every $x$ such that $(x, w) \notin R$ for all $w$ and every (possibly cheating) prover $P^*$, the probability that $V$ accepts is at most $\varepsilon$. Knowledge soundness is defined analogously via an efficient extractor.
 
 \paragraph{Succinct queries.}
-A linear query is \emph{succinct} if each of its operands $t_{j, i}$ can be evaluated at an arbitrary point of $K^{n_i}$ in $\text{poly}(n_i)$ operations over $K$. All linear queries appearing in our LIOPs are succinct. The succinct queries used here are closely related to, but strictly more restrictive than, the \emph{succinct linear forms} of Chiesa, Fenzi, and Weissenberg~\cite[\S 5]{cryptoeprint:2026/391}, which permit arbitrary $K$-linear functionals admitting polylogarithmic-time evaluation; in our setting the functional is always the inner product against the hypercube evaluation table of a succinctly evaluable multilinear polynomial.
+A linear query is \emph{succinct} if each of its operands $t_{j, i}$ can be evaluated at an arbitrary point of $K^{\ell_i}$ in $\text{poly}(\ell_i)$ operations over $K$. All linear queries appearing in our LIOPs are succinct. The succinct queries used here are closely related to, but strictly more restrictive than, the \emph{succinct linear forms} of Chiesa, Fenzi, and Weissenberg~\cite[\S 5]{cryptoeprint:2026/391}, which permit arbitrary $K$-linear functionals admitting polylogarithmic-time evaluation; in our setting the functional is always the inner product against the hypercube evaluation table of a succinctly evaluable multilinear polynomial.
 
-The basic example is the \emph{multilinear-evaluation query} at a point $r \in K^{n_i}$: taking $t(X) \coloneqq \mle{\eq}_{n_i}(r, X)$, the constraint $\sum_{v \in \BB_{n_i}} \mle{\eq}_{n_i}(r, v) \cdot \pi_i(v) = s$ is precisely the assertion that the multilinear extension $\mle{\pi}_i$ takes value $s$ at $r$, and the succinctness of $\mle{\eq}$ makes the query succinct. LIOPs whose linear queries are all of this form are sometimes called polynomial IOPs (PIOPs); we use the broader term LIOP to admit other succinct multilinear $t_j$ where convenient.
+The basic example, for an oracle of power-of-two length $n_i = 2^{\ell_i}$, is the \emph{multilinear-evaluation query} at a point $r \in K^{\ell_i}$: taking $t(X) \coloneqq \mle{\eq}_{\ell_i}(r, X)$, the constraint $\sum_{v \in \BB_{\ell_i}} \mle{\eq}_{\ell_i}(r, v) \cdot \pi_i(v) = s$ is precisely the assertion that the multilinear extension $\mle{\pi}_i$ takes value $s$ at $r$, and the succinctness of $\mle{\eq}$ makes the query succinct. For a general length the same role is played by $\mle{\eq}_{< n_i}(r, \cdot)$, which asserts the value at $r$ of the multilinear extension of the zero-extended oracle. LIOPs whose linear queries are all of this form are sometimes called polynomial IOPs (PIOPs); we use the broader term LIOP to admit other succinct multilinear $t_j$ where convenient.
 
 The compilation of an LIOP into a SNARK using a polynomial commitment scheme is recalled in \S\ref{sec:basic-snark-compiler}.
 
@@ -424,7 +427,7 @@ the multiplication taken in the GHASH field $\FF{2^{128}}$.
 
 This section specifies the Binius64 LIOP: an interactive oracle protocol that, given a constraint system (\S\ref{sec:constraint-system}) and a public statement $u$, verifies that the prover holds a witness $w$ satisfying the constraint system with respect to $u$. The compilation of this LIOP into a SNARK is discussed in \S\ref{sec:basic-snark-compiler}.
 
-Throughout, we assume the constraint-system parameters are padded so that $n_\text{words} = 2^{\ell_\text{words}}$, $n_\text{zero} = 2^{\ell_\text{zero}}$, $n_\text{and} = 2^{\ell_\text{and}}$, $n_\text{mul} = 2^{\ell_\text{mul}}$, $n_\text{binmul} = 2^{\ell_\text{binmul}}$, and $n_\text{public} \coloneqq n_\text{const} + n_\text{inout} = 2^{\ell_\text{public}}$ are all powers of two. Two aggregates of the four constraint-index dimensions recur: their maximum
+Throughout, we assume the constraint counts are padded with empty constraints so that $n_\text{zero} = 2^{\ell_\text{zero}}$, $n_\text{and} = 2^{\ell_\text{and}}$, $n_\text{mul} = 2^{\ell_\text{mul}}$, and $n_\text{binmul} = 2^{\ell_\text{binmul}}$ are powers of two. The word count $n_\text{words}$ and the public word count $n_\text{public} \coloneqq n_\text{const} + n_\text{inout}$ are arbitrary integers subject to the divisibility conditions below; we set $\ell_\text{words} \coloneqq \lceil \log_2 n_\text{words} \rceil$ and regard $w$ as zero on the words $n_\text{words} \le y < 2^{\ell_\text{words}}$ wherever a reduction treats it as a function on $\BB_{\ell_\text{words}}$. These virtual zero words appear in no constraint and in no committed oracle: the LIOP commits only the $n_\text{words}$ real words (\S\ref{sec:ring-switching}), in keeping with the integer-length oracles of \S\ref{sec:liop}. Two aggregates of the four constraint-index dimensions recur: their maximum
 \[
   \ell_\text{cons} \coloneqq \max(\ell_\text{zero}, \ell_\text{and}, \ell_\text{mul}, \ell_\text{binmul}),
 \]
@@ -432,7 +435,7 @@ the length of the unified constraint point of \S\ref{sec:rz-unification}, and th
 \[
   \ell_\text{sc} \coloneqq \max(\ell_\text{and}, \ell_\text{mul}, \ell_\text{binmul}),
 \]
-the round count of the batched sumcheck that produces it. The deterministic zerocheck of \S\ref{sec:rijndael} consumes three constraint-index variables, so we additionally require $\ell_\text{and} \geq 3$. We additionally pad both the witness and the public segment so that $\lambda \mid 64 \cdot n_\text{words}$ and $\lambda \mid 64 \cdot n_\text{public}$; equivalently, $\ell_\text{words} \geq \log_2(\lambda) - 6$ and $\ell_\text{public} \geq \log_2(\lambda) - 6$. With $\lambda = 128$, this means $\ell_\text{words}, \ell_\text{public} \geq 1$. The first condition is needed for the packed-witness construction of \S\ref{sec:ring-switching} and the second for the public input check of \S\ref{sec:public-input-check}. Padding entries outside the randomizable support are taken to be zero (or, for constraint-array lists, the empty list). Where convenient we identify $\BB_{\ell_\text{words}} \cong \set{0, \ldots, n_\text{words} - 1}$ and similarly for the other domains.
+the round count of the batched sumcheck that produces it. The deterministic zerocheck of \S\ref{sec:rijndael} consumes three constraint-index variables, so we additionally require $\ell_\text{and} \geq 3$. We additionally require $\lambda \mid 64 \cdot n_\text{words}$ and $\lambda \mid 64 \cdot n_\text{public}$, padding the witness and the public segment with zero words if necessary; with $\lambda = 128$, this means both counts are even. The first condition is needed for the packed-witness construction of \S\ref{sec:ring-switching} and the second for the public input check of \S\ref{sec:public-input-check}. Where convenient we identify $\BB_{\ell_\text{words}} \cong \set{0, \ldots, 2^{\ell_\text{words}} - 1}$ and similarly for the other domains.
 
 \subsection{Protocol Overview}
 \label{sec:protocol-overview}
@@ -441,11 +444,11 @@ The protocol commits to a single $K$-valued oracle obtained by packing the witne
 \[
   \mle{w}(J_0, \ldots, J_5, Y_0, \ldots, Y_{\ell_\text{words} - 1}) \in K[J, Y]^\mlin.
 \]
-The prover does not commit to $w$ directly: it instead commits to the packed function $\textsf{pack}_\lambda(w) \colon \BB_{\ell_\text{pack}} \to K$, defined in \S\ref{sec:ring-switching}, which encodes $\lambda$ consecutive bits of $w$ as a single $K$-element. The packed witness is the actual LIOP oracle, in keeping with the $K$-valued-oracle convention of \S\ref{sec:liop}.
+The prover does not commit to $w$ directly: it instead commits to the packed vector $\textsf{pack}_\lambda(w) \in K^{n_\text{pack}}$, defined in \S\ref{sec:ring-switching}, which encodes $\lambda$ consecutive bits of $w$ as a single $K$-element. The packed witness is the actual LIOP oracle, in keeping with the $K$-valued-oracle convention of \S\ref{sec:liop}.
 
 The LIOP proceeds in nine phases:
 \begin{enumerate}
-\item \textbf{Packed witness commitment.} The prover sends the packed witness oracle $\pi \coloneqq \textsf{pack}_\lambda(w) \colon \BB_{\ell_\text{pack}} \to K$, where $\ell_\text{pack} \coloneqq \ell_\text{words} - (\log_2 \lambda - 6)$ and $\textsf{pack}_\lambda$ is the packing map defined in \S\ref{sec:ring-switching}. (Implementations commit to $\pi$ via the polynomial commitment scheme of \S\ref{sec:basic-snark-compiler}, but the LIOP itself treats $\pi$ as an oracle of length $2^{\ell_\text{pack}}$.)
+\item \textbf{Packed witness commitment.} The prover sends the packed witness oracle $\pi \coloneqq \textsf{pack}_\lambda(w) \in K^{n_\text{pack}}$, where $n_\text{pack} \coloneqq 64 \cdot n_\text{words} / \lambda$ and $\textsf{pack}_\lambda$ is the packing map defined in \S\ref{sec:ring-switching}. (Implementations commit to $\pi$ via the polynomial commitment scheme of \S\ref{sec:basic-snark-compiler}, but the LIOP itself treats $\pi$ as an oracle of length $n_\text{pack}$.)
 \item \textbf{IntMul reduction (\S\ref{sec:intmul}).} A GKR-based reduction transforms the satisfaction of the $n_\text{mul}$ IntMul constraints into per-bit evaluation claims on the four multilinear extensions $\mle{a}, \mle{b}, \mle{c}_\text{lo}, \mle{c}_\text{hi}$ of the IntMul constraint arrays, leaving the bit-index free.
 \item \textbf{BinMul reduction (\S\ref{sec:binmul}).} A zerocheck-based reduction transforms the satisfaction of the $n_\text{binmul}$ BinMul constraints into per-bit evaluation claims on the multilinear extensions of the six BinMul constraint arrays $a_\text{lo}, a_\text{hi}, b_\text{lo}, b_\text{hi}, c_\text{lo}, c_\text{hi}$, leaving the bit-index free.
 \item \textbf{BitAnd reduction (\S\ref{sec:binand}).} A sumcheck-based reduction transforms the satisfaction of the $n_\text{and}$ BitAnd constraints into evaluation claims on the three oblong-multilinearizations $\widehat{a}, \widehat{b}, \widehat{c}$ of the BitAnd constraint arrays. Its univariate skip samples the shared bit-index oblong point $r_{\widehat{i}}$ against which the two multiplication reductions' outputs are folded, and its sumcheck carries, batched into it, the re-randomization that moves those outputs onto the unified constraint point $r^\star_x$ (\S\ref{sec:rz-unification}).
@@ -1074,94 +1077,100 @@ The shift reduction (\S\ref{sec:shift-reduction}) closes by establishing a singl
 \[
   \mle{w}(r_j, r_y) = t, \qquad r_j \in K^6, \quad r_y \in K^{\ell_\text{words}}, \quad t \in K,
 \]
-on the multilinear extension of the $\FF{2}$-valued witness $w$. Our LIOP framework (\S\ref{sec:liop}) requires the prover oracle to be $K$-valued and the final witness-side check to be a single linear query against that oracle. Ring-switching, due to Diamond and Posen~\cite{Diamond:2024ab}, bridges the two by packing the $\FF{2}$-valued witness into a $K$-valued oracle and reducing the bit-level evaluation claim to a linear query on the packed oracle. We summarize the construction at a level sufficient for the LIOP specification and defer protocol details and proofs to \cite{Diamond:2024ab}.
+on the multilinear extension of the $\FF{2}$-valued witness $w$. Our LIOP framework (\S\ref{sec:liop}) requires the prover oracle to be $K$-valued and the final witness-side check to be a single linear query against that oracle. Ring-switching, due to Diamond and Posen~\cite{Diamond:2024ab}, bridges the two by packing the $\FF{2}$-valued witness into a $K$-valued oracle and reducing the bit-level evaluation claim to a linear query on the packed oracle. We present the construction of \cite[Construction~3.1]{Diamond:2024ab}, generalized in one respect: the oracle has an arbitrary length rather than a power of two, which the prefix equality indicator of \S\ref{sec:notation} accommodates.
 
 \paragraph{The packed witness.}
-We view the witness as a length-$64 \cdot n_\text{words}$ bit-string indexed by $\BB_{6 + \ell_\text{words}}$. Set the packing parameter
+We view the witness as a length-$64 \cdot n_\text{words}$ bit-string, zero-extended to the index set $\BB_{6 + \ell_\text{words}}$ as in \S\ref{sec:binius-liop}. Set the packing parameter
 \[
   \kappa \coloneqq \log_2 \lambda,
 \]
-the $\FF{2}$-dimension of $K$. Our padding assumption $\lambda \mid 64 \cdot n_\text{words}$ (\S\ref{sec:notation}) ensures $6 + \ell_\text{words} \geq \kappa$, so we can group the $6 + \ell_\text{words}$ Boolean dimensions of $w$ into the first $\kappa$ (``packed'' bit dimensions, indexed by $i \in \BB_\kappa$) and the remaining
+the $\FF{2}$-dimension of $K$. Our assumption $\lambda \mid 64 \cdot n_\text{words}$ (\S\ref{sec:binius-liop}) ensures $6 + \ell_\text{words} \geq \kappa$, so we can group the $6 + \ell_\text{words}$ Boolean dimensions of $w$ into the first $\kappa$ (``packed'' bit dimensions, indexed by $i \in \BB_\kappa$) and the remaining
 \[
   \ell_\text{pack} \coloneqq 6 + \ell_\text{words} - \kappa
 \]
-(``unpacked'' dimensions, indexed by $y \in \BB_{\ell_\text{pack}}$). Each ``cell'' indexed by $y$ contains $\lambda$ witness bits; with $\lambda = 128$ this packs two consecutive $64$-bit witness words into a single $K$-element.
-
-Fix once and for all an $\FF{2}$-basis $(\beta_i)_{i \in \BB_\kappa}$ of $K$, indexed by $\BB_\kappa$ for notational convenience. The \emph{packing map} $\textsf{pack}_\lambda$ takes the witness $w \colon \BB_{6 + \ell_\text{words}} \to \FF{2}$ to the function
+(``unpacked'' dimensions, indexed by $y \in \BB_{\ell_\text{pack}}$). Each ``cell'' indexed by $y$ contains $\lambda$ witness bits; with $\lambda = 128$ this packs two consecutive $64$-bit witness words into a single $K$-element. The real words fill exactly the first
 \[
-  \textsf{pack}_\lambda(w) \colon \BB_{\ell_\text{pack}} \to K, \qquad \textsf{pack}_\lambda(w)(y) \coloneqq \sum_{i \in \BB_\kappa} w(i, y) \cdot \beta_i,
+  n_\text{pack} \coloneqq 64 \cdot n_\text{words} / \lambda
 \]
-i.e., each entry of $\textsf{pack}_\lambda(w)$ is the inner product of $\lambda$ witness bits with the chosen basis. The LIOP commits to the oracle $\pi \coloneqq \textsf{pack}_\lambda(w)$, of length $2^{\ell_\text{pack}}$ over $K$.
+cells, so that $w(i, y) = 0$ for every $y \ge n_\text{pack}$, and $\ell_\text{pack} = \lceil \log_2 n_\text{pack} \rceil$.
+
+Fix once and for all an $\FF{2}$-basis $(\beta_i)_{i \in \BB_\kappa}$ of $K$, indexed by $\BB_\kappa$ for notational convenience. The \emph{packing map} $\textsf{pack}_\lambda$ takes the witness to the vector
+\[
+  \textsf{pack}_\lambda(w) \in K^{n_\text{pack}}, \qquad \textsf{pack}_\lambda(w)(y) \coloneqq \sum_{i \in \BB_\kappa} w(i, y) \cdot \beta_i, \quad y < n_\text{pack},
+\]
+i.e., each entry of $\textsf{pack}_\lambda(w)$ is the inner product of $\lambda$ witness bits with the chosen basis. The LIOP commits to the oracle $\pi \coloneqq \textsf{pack}_\lambda(w)$, of length $n_\text{pack}$ over $K$ and variable count $\ell_\text{pack}$.
+
+\paragraph{The tensor algebra.}
+Let $A \coloneqq K \otimes_{\FF{2}} K$, a commutative $\FF{2}$-algebra with the two embeddings $\phi_0(a) \coloneqq a \otimes 1$ and $\phi_1(a) \coloneqq 1 \otimes a$ of $K$. It is a free module of rank $\lambda$ over $\phi_0(K)$ with basis $(\phi_1(\beta_j))_{j \in \BB_\kappa}$, so every element has a unique expansion $\sum_{j \in \BB_\kappa} \phi_0(c_j)\, \phi_1(\beta_j)$ with coordinates $c_j \in K$. For $r'' \in K^\kappa$ define the $\phi_0(K)$-linear functional
+\[
+  \psi_{r''} \colon A \to K, \qquad \sum_{j \in \BB_\kappa} \phi_0(c_j)\, \phi_1(\beta_j) \mapsto \sum_{j \in \BB_\kappa} \mle{\eq}_\kappa(r'', j) \cdot c_j = \mle{c}(r''),
+\]
+which sends a nonzero element to zero with probability at most $\kappa / |K|$ over $r''$. Its restriction $\Lambda_{r''} \coloneqq \psi_{r''} \circ \phi_1 \colon K \to K$ is the $\FF{2}$-linear map with $\beta_j \mapsto \mle{\eq}_\kappa(r'', j)$, and $\psi_{r''}(\phi_0(a)\, \phi_1(b)) = a \cdot \Lambda_{r''}(b)$.
 
 \paragraph{Ring-switching reduction.}
-The reduction follows Diamond and Posen \cite[Construction~3.1]{Diamond:2024ab}. We split the shift reduction's evaluation point $(r_j, r_y) \in K^{6 + \ell_\text{words}}$ into a packed part $r_\text{pack} \in K^\kappa$ and an unpacked part $r_\text{rest} \in K^{\ell_\text{pack}}$, reinterpreting $(r_j, r_y)$ under the packing layout above.
+We split the shift reduction's evaluation point $(r_j, r_y) \in K^{6 + \ell_\text{words}}$ into a packed part $r_\text{pack} \in K^\kappa$ and an unpacked part $r_\text{rest} \in K^{\ell_\text{pack}}$, reinterpreting $(r_j, r_y)$ under the packing layout above. Since the cells $y \ge n_\text{pack}$ hold only zero bits, the claim reads
+\[
+  t = \sum_{i \in \BB_\kappa} \sum_{y < n_\text{pack}} \mle{\eq}_\kappa(r_\text{pack}, i) \cdot b(y) \cdot w(i, y), \qquad b(y) \coloneqq \mle{\eq}_{< n_\text{pack}}(r_\text{rest}, y),
+\]
+a bit-weighted sum whose weight factors into a packed factor $\mle{\eq}_\kappa(r_\text{pack}, \cdot)$ and a cell factor $b$, the prefix equality indicator of \S\ref{sec:notation}.
 
 \begin{enumerate}
-\item The prover sends the vector of partial evaluations
+\item The prover sends the vector of row sums
   \[
-    \hat{s} \coloneqq \bigl( \hat{s}_i \bigr)_{i \in \BB_\kappa}, \qquad \hat{s}_i \coloneqq \mle{w}(i, r_\text{rest}),
+    \hat{s} \coloneqq \bigl( \hat{s}_i \bigr)_{i \in \BB_\kappa}, \qquad \hat{s}_i \coloneqq \sum_{y < n_\text{pack}} b(y) \cdot w(i, y) = \mle{w}(i, r_\text{rest}),
   \]
   one $K$-element per index $i \in \BB_\kappa$.
 \item The verifier checks consistency with the input claim $t$ by verifying the inner product
   \[
-    t \stackrel{?}{=} \sum_{i \in \BB_\kappa} \mle{\eq}_\kappa(i, r_\text{pack}) \cdot \hat{s}_i.
+    t \stackrel{?}{=} \sum_{i \in \BB_\kappa} \mle{\eq}_\kappa(r_\text{pack}, i) \cdot \hat{s}_i.
   \]
-\item The verifier samples $r' \gets K^{\ell_\text{pack}}$.
-\item The verifier specializes the \emph{ring-switching indicator multilinear} of \cite[Construction~3.1]{Diamond:2024ab} at $(r_\text{rest}, r')$ to obtain a multilinear $\textsf{ring-switch-ind}_{r_\text{rest}, r'}(Y) \in K[Y_0, \ldots, Y_{\ell_\text{pack} - 1}]^\mlin$, and derives a target value
-  \[
-    s' \in K
-  \]
-  as a fixed $K$-linear combination of the entries of $\hat{s}$ whose coefficients depend on $r_\text{rest}$, $r'$, and the basis $(\beta_i)$. The exact functional form of both $\textsf{ring-switch-ind}_{r_\text{rest}, r'}$ and $s'$ is given by \cite[Construction~3.1]{Diamond:2024ab}; the verifier evaluates both in $O(\ell_\text{pack} \cdot \lambda)$ operations.
+\item The verifier samples $r'' \gets K^\kappa$ and sets the target $s_\text{rs} \coloneqq \sum_{i \in \BB_\kappa} \beta_i \cdot \Lambda_{r''}(\hat{s}_i)$.
+\item The output is the linear query $(t_\text{rs}, s_\text{rs})$ on $\pi$, where $t_\text{rs} \in K[Y_0, \ldots, Y_{\ell_\text{pack} - 1}]^\mlin$ is the multilinear extension of the table $y \mapsto \Lambda_{r''}(b(y))$ for $y < n_\text{pack}$ and $0$ for $y \ge n_\text{pack}$.
 \end{enumerate}
 
-The output of ring-switching is the pair $(\textsf{ring-switch-ind}_{r_\text{rest}, r'}, s')$, which defines the linear oracle query on $\pi$:
-\[
-  \sum_{y \in \BB_{\ell_\text{pack}}} \textsf{ring-switch-ind}_{r_\text{rest}, r'}(y) \cdot \pi(y) \stackrel{?}{=} s'.
-\]
-Soundness of this reduction is established in \cite[\S 3]{Diamond:2024ab}; the error is $O(\ell_\text{pack})/|K|$ over $r'$.
+\paragraph{Correctness and soundness.}
+In $A$, both $\sum_{y < n_\text{pack}} \phi_1(b(y))\, \phi_0(\pi(y))$ and $\sum_{i \in \BB_\kappa} \phi_0(\beta_i)\, \phi_1(\hat{s}_i)$ expand to $\sum_{i, y} w(i, y)\, \phi_0(\beta_i)\, \phi_1(b(y))$, so they are equal for the honest $\hat{s}$. Applying $\psi_{r''}$ to the first gives $\sum_{y < n_\text{pack}} \Lambda_{r''}(b(y)) \cdot \pi(y) = \langle \pi, t_\text{rs} \rangle$, and to the second gives $s_\text{rs}$; the query is therefore satisfied. Conversely, fix the committed $\pi$. If the prover's $\hat{s}$ differs from the honest vector determined by $\pi$, the two elements of $A$ differ, and $\psi_{r''}$ separates them except with probability $\kappa / |K|$ over $r''$, in which case $\langle \pi, t_\text{rs} \rangle \ne s_\text{rs}$ and the query fails; if $\hat{s}$ is honest and the claim $t$ is false, step~2 rejects. The reduction thus has soundness error $\kappa / |K|$.
 
-For notational uniformity with the rest of the document, we abbreviate this output query as $(t_\text{rs}, s_\text{rs}) \coloneqq (\textsf{ring-switch-ind}_{r_\text{rest}, r'}, s')$. It is one of the two linear queries on $\pi$ produced by the LIOP; it is random-combined with the public-input-check query of \S\ref{sec:public-input-check} to yield the single final query of \S\ref{sec:liop}.
+\paragraph{Evaluating the operand.}
+The operand $t_\text{rs}$ vanishes above the oracle by construction (\S\ref{sec:liop}), and it is succinct. Since $\Lambda_{r''}$ is only $\FF{2}$-linear, $t_\text{rs}(\rho)$ is not $\Lambda_{r''}$ of anything; instead, for $\rho \in K^{\ell_\text{pack}}$,
+\[
+  t_\text{rs}(\rho) = \sum_{y < n_\text{pack}} \mle{\eq}_{\ell_\text{pack}}(\rho, y) \cdot \Lambda_{r''}(b(y)) = \psi_{r''}\Bigl( \mle{\eq}_{< n_\text{pack}}\bigl( \phi_0(\rho), \phi_1(r_\text{rest}) \bigr) \Bigr),
+\]
+where the prefix equality indicator, a polynomial with $\FF{2}$-coefficients, is evaluated in $A$ with $\rho$ embedded through $\phi_0$ and $r_\text{rest}$ through $\phi_1$. The identity holds because $\mle{\eq}_{< m}(X, Y) = \sum_{y < m} \mle{\eq}(X, y) \cdot \mle{\eq}(Y, y)$ in $\FF{2}[X, Y]$ survives substitution into any commutative $\FF{2}$-algebra, and $\psi_{r''}$ turns each term $\phi_0(\mle{\eq}(\rho, y))\, \phi_1(\mle{\eq}(r_\text{rest}, y))$ into $\mle{\eq}(\rho, y) \cdot \Lambda_{r''}(b(y))$. The recursion of \S\ref{sec:notation} evaluates the indicator in $O(\ell_\text{pack})$ multiplications in $A$. The target $s_\text{rs}$ costs $\lambda$ applications of $\Lambda_{r''}$.
+
+Nothing above is specific to an evaluation claim. Any claim $\sum_{i, y} a(i)\, b(y)\, w(i, y) = t$ whose weight factors across the packed and unpacked variables reduces the same way, with $a$ arbitrary and $b$ any multilinear given by a succinct formula over $\FF{2}$ in $Y$ and some $K$-parameters, which the verifier evaluates in $A$ with the parameters through $\phi_1$ and $Y$ through $\phi_0$. The factor $b = \mle{\eq}_{\ell_\text{pack}}(r_\text{rest}, \cdot)$ recovers \cite[Construction~3.1]{Diamond:2024ab}; the prefix indicator is what lets the oracle have length $n_\text{pack}$ rather than $2^{\ell_\text{pack}}$, at the price that the length is a whole number of cells, i.e.\ $\lambda \mid 64 \cdot n_\text{words}$.
+
+The query $(t_\text{rs}, s_\text{rs})$ is one of the two linear queries on $\pi$ produced by the LIOP; it is random-combined with the public-input-check query of \S\ref{sec:public-input-check} to yield the single final query of \S\ref{sec:liop}.
 
 \subsection{Public Input Check}
 \label{sec:public-input-check}
 
 The public input check verifies that the first $n_\text{public} \coloneqq n_\text{const} + n_\text{inout}$ words of $w$ equal the verifier-held public data: $w[y] = C(y)$ for $y \in \set{0, \ldots, n_\text{const} - 1}$ and $w[n_\text{const} + y] = u(y)$ for $y \in \set{0, \ldots, n_\text{inout} - 1}$. We concatenate the constants and the statement into a single vector
 \[
-  \textsf{public} \colon \BB_6 \times \BB_{\ell_\text{public}} \to \FF{2}, \qquad \textsf{public} \coloneqq C \mathbin{\Vert} u,
+  \textsf{public} \colon \BB_6 \times \set{0, \ldots, n_\text{public} - 1} \to \FF{2}, \qquad \textsf{public} \coloneqq C \mathbin{\Vert} u.
 \]
-under the identification of $\BB_{\ell_\text{public}}$ with $\set{0, \ldots, n_\text{public} - 1}$. The padding requirement $\lambda \mid 64 \cdot n_\text{public}$ (\S\ref{sec:notation}) lets us apply the packing map $\textsf{pack}_\lambda$ (\S\ref{sec:ring-switching}) to $\textsf{public}$ in the same way as to $w$, producing
+The requirement $\lambda \mid 64 \cdot n_\text{public}$ (\S\ref{sec:binius-liop}) lets us apply the packing map $\textsf{pack}_\lambda$ (\S\ref{sec:ring-switching}) to $\textsf{public}$ in the same way as to $w$, producing
 \[
-  \textsf{pack}_\lambda(\textsf{public}) \colon \BB_{\ell_\text{public-pack}} \to K, \qquad \ell_\text{public-pack} \coloneqq \ell_\text{public} - (\log_2 \lambda - 6).
+  \textsf{pack}_\lambda(\textsf{public}) \in K^{n_\text{public-pack}}, \qquad n_\text{public-pack} \coloneqq 64 \cdot n_\text{public} / \lambda \le n_\text{pack}.
 \]
-The check the verifier wants to enforce is that $\pi$ agrees with $\textsf{pack}_\lambda(\textsf{public})$ on the first $2^{\ell_\text{public-pack}}$ entries: for all $y \in \BB_{\ell_\text{public-pack}}$,
+Since the public words are the first words of $w$, the check the verifier wants to enforce is that $\pi$ agrees with $\textsf{pack}_\lambda(\textsf{public})$ on its first $n_\text{public-pack}$ entries:
 \[
-  \pi(y, 0, \ldots, 0) \stackrel{?}{=} \textsf{pack}_\lambda(\textsf{public})(y),
+  \pi(y) \stackrel{?}{=} \textsf{pack}_\lambda(\textsf{public})(y) \qquad \text{for all } y < n_\text{public-pack}.
 \]
-where the index $(y, 0, \ldots, 0) \in \BB_{\ell_\text{pack}}$ pads $y$ with $\ell_\text{pack} - \ell_\text{public-pack}$ zeros on the high coordinates. Equivalently, the polynomial
-\[
-  \mle{\pi}(Y_0, \ldots, Y_{\ell_\text{public-pack} - 1}, 0, \ldots, 0) - \mle{\textsf{pack}_\lambda(\textsf{public})}(Y_0, \ldots, Y_{\ell_\text{public-pack} - 1})
-\]
-vanishes on $\BB_{\ell_\text{public-pack}}$.
 
 \paragraph{Reduction to a linear query.}
-The verifier samples $r_p \gets K^{\ell_\text{public-pack}}$ and checks
+The verifier samples $r_p \gets K^{\ell_\text{pack}}$ and outputs the linear query on $\pi$ with the prefix equality indicator (\S\ref{sec:notation}) as operand,
 \[
-  \mle{\pi}(r_p, 0, \ldots, 0) \stackrel{?}{=} \mle{\textsf{pack}_\lambda(\textsf{public})}(r_p).
+  t_\text{pub}(Y) \coloneqq \mle{\eq}_{< n_\text{public-pack}}(r_p, Y), \qquad s_\text{pub} \coloneqq \sum_{y < n_\text{public-pack}} \mle{\eq}_{\ell_\text{pack}}(r_p, y) \cdot \textsf{pack}_\lambda(\textsf{public})(y),
 \]
-The right-hand side is computable by the verifier on its own in $O(n_\text{public} / \lambda)$ time via the standard $\textsf{TensorExpand}$-based multilinear-evaluation algorithm. The left-hand side is an evaluation of the oracle's multilinear extension, which is exactly the multilinear-evaluation linear query on $\pi$ at the point $(r_p, 0, \ldots, 0) \in K^{\ell_\text{pack}}$:
-\[
-  t_\text{pub}(Y) \coloneqq \mle{\eq}_{\ell_\text{pack}}\bigl( (r_p, 0, \ldots, 0), Y \bigr) = \mle{\eq}_{\ell_\text{public-pack}}(r_p, Y_{<\ell_\text{public-pack}}) \cdot \prod_{i = \ell_\text{public-pack}}^{\ell_\text{pack} - 1} (1 - Y_i),
-\]
-with target $s_\text{pub} \coloneqq \mle{\textsf{pack}_\lambda(\textsf{public})}(r_p)$. The check passes iff $\sum_{y \in \BB_{\ell_\text{pack}}} t_\text{pub}(y) \cdot \pi(y) = s_\text{pub}$.
-
-By the standard zerocheck soundness, the reduction has error $\ell_\text{public-pack} / |K|$ over the choice of $r_p$.
+whose target the verifier computes on its own in $O(n_\text{public-pack})$ time from the length-$n_\text{public-pack}$ prefix of $\textsf{TensorExpand}_{\ell_\text{pack}}(r_p)$. The operand vanishes above $n_\text{public-pack}$, hence above the oracle. The query asserts $\sum_{y < n_\text{public-pack}} \mle{\eq}_{\ell_\text{pack}}(r_p, y) \cdot \bigl( \pi(y) - \textsf{pack}_\lambda(\textsf{public})(y) \bigr) = 0$, i.e.\ that the multilinear extension of the zero-extended difference vanishes at $r_p$; if the difference is nonzero this fails except with probability $\ell_\text{pack} / |K|$ over $r_p$, which is the reduction's soundness error.
 
 \paragraph{Batching with the ring-switching query.}
 The LIOP could output the two queries $(t_\text{rs}, s_\text{rs})$ from ring-switching and $(t_\text{pub}, s_\text{pub})$ from the public input check independently. We instead random-combine them into a single linear query on $\pi$. The verifier samples a batching coefficient $\xi \gets K$ and outputs
 \[
   t(Y) \coloneqq t_\text{rs}(Y) + \xi \cdot t_\text{pub}(Y), \qquad s \coloneqq s_\text{rs} + \xi \cdot s_\text{pub},
 \]
-so that the LIOP's final linear query is $\sum_{y \in \BB_{\ell_\text{pack}}} t(y) \cdot \pi(y) = s$. Both $t_\text{rs}$ and $t_\text{pub}$ are succinct (evaluable in $O(\ell_\text{pack})$ field operations), so $t$ is too. The random batching contributes an additional $1/|K|$ to the soundness error.
+so that the LIOP's final linear query is $\sum_{y < n_\text{pack}} t(y) \cdot \pi(y) = s$. Both $t_\text{rs}$ and $t_\text{pub}$ are succinct and vanish above the oracle, so $t$ does too. The random batching contributes an additional $1/|K|$ to the soundness error.
 
 \section{Basic SNARK Compiler}
 \label{sec:basic-snark-compiler}
@@ -1176,7 +1185,7 @@ each of which is independent of the LIOP and applies uniformly to LIOPs with any
 \label{sec:liop-to-snark}
 
 \paragraph{Stage 1: LIOP \texorpdfstring{$\to$}{to} IOP via BaseFold.}
-An LIOP's verifier closes by issuing linear queries, each specified by a multilinear polynomial $t_j$ and target $s_j$ against an oracle $\pi_{i_j}$ (\S\ref{sec:liop}). To turn this into a standard IOP, in which the verifier issues point queries, we encode each LIOP oracle $\pi_i \in K^{2^{n_i}}$ as a codeword of a Reed--Solomon code over $K$. Each linear query then becomes an additional linear constraint on the codeword: the codeword is required not only to be a valid Reed--Solomon codeword but also to satisfy $\sum_{w \in \BB_{n_i}} t_j(w) \cdot \pi_{i_j}(w) = s_j$. The pair (Reed--Solomon code, linear constraint) is a \emph{constrained Reed--Solomon code} in the sense of Arnon, Chiesa, Fenzi, and Yogev~\cite[\S 4.1]{Arnon:2025aa}. BaseFold (\S\ref{sec:basefold}) is an \emph{interactive oracle proof of proximity} (IOPP) for constrained Reed--Solomon codes: given oracle access to a candidate codeword, BaseFold accepts iff the codeword is close to a true codeword of the constrained code, using a polylogarithmic number of point queries. Composing one BaseFold instance per LIOP linear query yields a public-coin IOP whose oracles are the original $\pi_i$ together with the folded codewords introduced by BaseFold.
+An LIOP's verifier closes by issuing linear queries, each specified by a multilinear polynomial $t_j$ and target $s_j$ against an oracle $\pi_{i_j}$ (\S\ref{sec:liop}). To turn this into a standard IOP, in which the verifier issues point queries, we zero-extend each LIOP oracle $\pi_i \in K^{n_i}$ to the power-of-two length $2^{\ell_i}$ and encode the result as a codeword of a Reed--Solomon code over $K$. Since every operand vanishes above the oracle, $\langle \pi_i, t_{j, i} \rangle$ is unchanged by the extension, and henceforth we write $\pi_i \colon \BB_{\ell_i} \to K$ for the extended oracle. Each linear query then becomes an additional linear constraint on the codeword: the codeword is required not only to be a valid Reed--Solomon codeword but also to satisfy $\sum_{w \in \BB_{\ell_i}} t_j(w) \cdot \pi_{i_j}(w) = s_j$. The pair (Reed--Solomon code, linear constraint) is a \emph{constrained Reed--Solomon code} in the sense of Arnon, Chiesa, Fenzi, and Yogev~\cite[\S 4.1]{Arnon:2025aa}. BaseFold (\S\ref{sec:basefold}) is an \emph{interactive oracle proof of proximity} (IOPP) for constrained Reed--Solomon codes: given oracle access to a candidate codeword, BaseFold accepts iff the codeword is close to a true codeword of the constrained code, using a polylogarithmic number of point queries. Composing one BaseFold instance per LIOP linear query yields a public-coin IOP whose oracles are the original $\pi_i$ together with the folded codewords introduced by BaseFold.
 
 \paragraph{Stage 2: IOP \texorpdfstring{$\to$}{to} IP via BCS.}
 The BCS transform of Ben-Sasson, Chiesa, and Spooner~\cite{Ben-Sasson:2016aa} replaces each oracle message of an IOP with the Merkle-tree root of its content; subsequent point queries are answered by the prover with the corresponding leaf and Merkle authentication path. In the random oracle model, this transformation preserves soundness up to a tight multiplicative loss in the adversary's query budget, and the result is a public-coin interactive proof (no oracles) of the same statement.
@@ -1185,7 +1194,7 @@ The BCS transform of Ben-Sasson, Chiesa, and Spooner~\cite{Ben-Sasson:2016aa} re
 The Fiat--Shamir transform makes the public-coin IP non-interactive by deriving each verifier challenge as a hash of the running transcript. The resulting non-interactive argument is a SNARK in the random oracle model.
 
 \paragraph{Succinctness.}
-The compiled SNARK is succinct (proof size and verification time polylogarithmic in the witness size) provided the source LIOP is succinct in the sense of \S\ref{sec:liop}: when each linear query operand $t_{j, i}$ is evaluable in $\text{poly}(n_i)$ time, BaseFold's verifier uses polylogarithmically many point queries, the Merkle openings are polylog-sized, and the LIOP's own non-oracle messages are short.
+The compiled SNARK is succinct (proof size and verification time polylogarithmic in the witness size) provided the source LIOP is succinct in the sense of \S\ref{sec:liop}: when each linear query operand $t_{j, i}$ is evaluable in $\text{poly}(\ell_i)$ time, BaseFold's verifier uses polylogarithmically many point queries, the Merkle openings are polylog-sized, and the LIOP's own non-oracle messages are short.
 
 \subsection{BaseFold}
 \label{sec:basefold}
@@ -1222,7 +1231,7 @@ For target soundness $2^{-\lambda}$, the query count $\mu$ is chosen logarithmic
 \subsection{Lifted BaseFold}
 \label{sec:lifted-basefold}
 
-The Batched BaseFold protocol of \S\ref{sec:batched-basefold} requires the oracles to share a common variable count $\mathbf{n}$. When the LIOP commits oracles of unequal sizes, we lift each smaller oracle's codeword to the level-$\mathbf{n}$ encoding via the \emph{Lifted BaseFold} (a.k.a.~Lifted FRI, after the Fast Reed--Solomon IOPP) construction~\cite{youtube:LiftedFRI}.
+The Batched BaseFold protocol of \S\ref{sec:batched-basefold} requires the oracles to share a common variable count $\boldsymbol{\ell}$. When the LIOP commits oracles of unequal sizes, we lift each smaller oracle's codeword to the level-$\boldsymbol{\ell}$ encoding via the \emph{Lifted BaseFold} (a.k.a.~Lifted FRI, after the Fast Reed--Solomon IOPP) construction~\cite{youtube:LiftedFRI}.
 
 We use three operators on $K$-vectors. For $v \in K^N$ with $N = 2^\mu$, and $\eta \geq 0$, define
 \begin{align*}
@@ -1242,21 +1251,21 @@ For all $\mu, \eta \geq 0$ and any coefficient vector $a \in K^{2^\mu}$ with res
 \]
 \end{theorem}
 
-Now fix an oracle $\pi \colon \BB_n \to K$ with $n \leq \mathbf{n}$, identified with its value vector in $K^{2^n}$ when applying the operators. Its lift $\textsf{ZeroPadMSB}_{\mathbf{n} - n}(\pi) \colon \BB_{\mathbf{n}} \to K$ has multilinear extension
+Now fix an oracle $\pi \colon \BB_n \to K$ with $n \leq \boldsymbol{\ell}$, identified with its value vector in $K^{2^n}$ when applying the operators. Its lift $\textsf{ZeroPadMSB}_{\boldsymbol{\ell} - n}(\pi) \colon \BB_{\boldsymbol{\ell}} \to K$ has multilinear extension
 \begin{equation}
-  \mle{\textsf{ZeroPadMSB}_{\mathbf{n} - n}(\pi)}(X_0, \ldots, X_{\mathbf{n} - 1}) = \mle{\pi}(X_0, \ldots, X_{n - 1}) \cdot \mle{\eq}_{\mathbf{n} - n}\bigl( 0^{\mathbf{n} - n}, X_n, \ldots, X_{\mathbf{n} - 1} \bigr),
+  \mle{\textsf{ZeroPadMSB}_{\boldsymbol{\ell} - n}(\pi)}(X_0, \ldots, X_{\boldsymbol{\ell} - 1}) = \mle{\pi}(X_0, \ldots, X_{n - 1}) \cdot \mle{\eq}_{\boldsymbol{\ell} - n}\bigl( 0^{\boldsymbol{\ell} - n}, X_n, \ldots, X_{\boldsymbol{\ell} - 1} \bigr),
   \label{eq:zeropad-msb-mle}
 \end{equation}
-where $\mle{\eq}_{\mathbf{n} - n}(0^{\mathbf{n} - n}, Y_0, \ldots, Y_{\mathbf{n} - n - 1}) = \prod_j (1 - Y_j)$ vanishes off the all-zeros high block. The right-hand side is the variable padding of \S\ref{sec:variable-padding}, which is what lets the batched sumcheck of \S\ref{sec:batched-basefold} treat the lifted oracles as claims on a common variable count.
+where $\mle{\eq}_{\boldsymbol{\ell} - n}(0^{\boldsymbol{\ell} - n}, Y_0, \ldots, Y_{\boldsymbol{\ell} - n - 1}) = \prod_j (1 - Y_j)$ vanishes off the all-zeros high block. The right-hand side is the variable padding of \S\ref{sec:variable-padding}, which is what lets the batched sumcheck of \S\ref{sec:batched-basefold} treat the lifted oracles as claims on a common variable count.
 
-The bit-reversed indexing of \S\ref{sec:basefold} turns end-padding on the hypercube into LSB zero-padding on the coefficient side: the coefficient vector of $\textsf{ZeroPadMSB}_{\mathbf{n} - n}(\pi)$ in the novel basis is exactly $\textsf{ZeroPadLSB}_{\mathbf{n} - n}$ applied to the coefficient vector of $\pi$. Combining with Theorem~\ref{thm:lch-ntt-zeropad}, we obtain the central identity of Lifted BaseFold:
+The bit-reversed indexing of \S\ref{sec:basefold} turns end-padding on the hypercube into LSB zero-padding on the coefficient side: the coefficient vector of $\textsf{ZeroPadMSB}_{\boldsymbol{\ell} - n}(\pi)$ in the novel basis is exactly $\textsf{ZeroPadLSB}_{\boldsymbol{\ell} - n}$ applied to the coefficient vector of $\pi$. Combining with Theorem~\ref{thm:lch-ntt-zeropad}, we obtain the central identity of Lifted BaseFold:
 \begin{equation}
-  \textsf{Enc}_{\mathbf{n}}\bigl( \textsf{ZeroPadMSB}_{\mathbf{n} - n}(\pi) \bigr) = \textsf{Duplicate}_{\mathbf{n} - n}\bigl( \textsf{Enc}_n(\pi) \bigr).
+  \textsf{Enc}_{\boldsymbol{\ell}}\bigl( \textsf{ZeroPadMSB}_{\boldsymbol{\ell} - n}(\pi) \bigr) = \textsf{Duplicate}_{\boldsymbol{\ell} - n}\bigl( \textsf{Enc}_n(\pi) \bigr).
   \label{eq:lifted-basefold-identity}
 \end{equation}
-The lifted codeword is therefore the original codeword with each entry duplicated $2^{\mathbf{n} - n}$ times. Given Merkle access to the original codeword $c = \textsf{Enc}_n(\pi)$, the verifier emulates oracle access to the lifted codeword by translating a query at position $e \in E_{\mathbf{n}}$ into a query at $\lfloor e \cdot |E_n| / |E_{\mathbf{n}}| \rfloor \in E_n$.
+The lifted codeword is therefore the original codeword with each entry duplicated $2^{\boldsymbol{\ell} - n}$ times. Given Merkle access to the original codeword $c = \textsf{Enc}_n(\pi)$, the verifier emulates oracle access to the lifted codeword by translating a query at position $e \in E_{\boldsymbol{\ell}}$ into a query at $\lfloor e \cdot |E_n| / |E_{\boldsymbol{\ell}}| \rfloor \in E_n$.
 
-Using this lift, every LIOP oracle is virtually placed at a common level $\mathbf{n} = \max_i n_i$ (where $n_i$ is the variable count of the $i$-th oracle) before the parties run Batched BaseFold (\S\ref{sec:batched-basefold}). Soundness of the lift requires a refined proximity-gap analysis (the lifted codeword's proximity to the level-$\mathbf{n}$ code is constrained by the original's proximity to the level-$n$ code, with a scaling factor of $2^{\mathbf{n} - n}$); see \cite{youtube:LiftedFRI} for details.
+Using this lift, every LIOP oracle is virtually placed at a common level $\boldsymbol{\ell} = \max_i \ell_i$ (where $\ell_i$ is the variable count of the $i$-th oracle) before the parties run Batched BaseFold (\S\ref{sec:batched-basefold}). Soundness of the lift requires a refined proximity-gap analysis (the lifted codeword's proximity to the level-$\boldsymbol{\ell}$ code is constrained by the original's proximity to the level-$n$ code, with a scaling factor of $2^{\boldsymbol{\ell} - n}$); see \cite{youtube:LiftedFRI} for details.
 
 \subsection{Batched BaseFold}
 \label{sec:batched-basefold}
@@ -1267,14 +1276,14 @@ Suppose the LIOP holds opening claims
 \[
   \langle \pi_i, t_i \rangle = s_i, \qquad i = 0, \ldots, k - 1,
 \]
-where $\pi_i \colon \BB_{n_i} \to K$ is the $i$-th oracle, $t_i \colon \BB_{n_i} \to K$ is the \emph{transparent} operand---a multilinear the verifier can evaluate on its own, with no help from the prover---and $s_i \in K$ is the target.
+where $\pi_i \colon \BB_{\ell_i} \to K$ is the $i$-th (zero-extended) oracle, $t_i \colon \BB_{\ell_i} \to K$ is the \emph{transparent} operand---a multilinear the verifier can evaluate on its own, with no help from the prover---and $s_i \in K$ is the target.
 
 \paragraph{Step 1: Batched sumcheck.}
-The verifier samples a single batching challenge $\alpha \gets K$. Let $\pi_i^{(\uparrow)}, t_i^{(\uparrow)} \colon \BB_{\mathbf{n}} \to K$ denote the ZeroPadMSB lifts (\S\ref{sec:lifted-basefold}) of $\pi_i, t_i$ to the common variable count $\mathbf{n} \coloneqq \max_i n_i$; the lifts vanish off the original domains, so $\sum_{x \in \BB_{\mathbf{n}}} \mle{\pi}_i^{(\uparrow)}(x)\, \mle{t}_i^{(\uparrow)}(x) = s_i$. The parties run a sumcheck on
+The verifier samples a single batching challenge $\alpha \gets K$. Let $\pi_i^{(\uparrow)}, t_i^{(\uparrow)} \colon \BB_{\boldsymbol{\ell}} \to K$ denote the ZeroPadMSB lifts (\S\ref{sec:lifted-basefold}) of $\pi_i, t_i$ to the common variable count $\boldsymbol{\ell} \coloneqq \max_i \ell_i$; the lifts vanish off the original domains, so $\sum_{x \in \BB_{\boldsymbol{\ell}}} \mle{\pi}_i^{(\uparrow)}(x)\, \mle{t}_i^{(\uparrow)}(x) = s_i$. The parties run a sumcheck on
 \[
-  \sum_{i = 0}^{k - 1} \alpha^i s_i \stackrel{?}{=} \sum_{x \in \BB_{\mathbf{n}}} \sum_{i = 0}^{k - 1} \alpha^i \cdot \mle{\pi}_i^{(\uparrow)}(x) \cdot \mle{t}_i^{(\uparrow)}(x).
+  \sum_{i = 0}^{k - 1} \alpha^i s_i \stackrel{?}{=} \sum_{x \in \BB_{\boldsymbol{\ell}}} \sum_{i = 0}^{k - 1} \alpha^i \cdot \mle{\pi}_i^{(\uparrow)}(x) \cdot \mle{t}_i^{(\uparrow)}(x).
 \]
-After $\mathbf{n}$ rounds with sumcheck challenges $r \in K^{\mathbf{n}}$, the batched claim reduces to $\sum_{i = 0}^{k - 1} \alpha^i \cdot \mle{\pi}_i^{(\uparrow)}(r) \cdot \mle{t}_i^{(\uparrow)}(r)$. The verifier evaluates each $\mle{t}_i^{(\uparrow)}(r)$ on its own (via the factorization \eqref{eq:zeropad-msb-mle}). The remaining unknowns are the prover-claimed evaluations
+After $\boldsymbol{\ell}$ rounds with sumcheck challenges $r \in K^{\boldsymbol{\ell}}$, the batched claim reduces to $\sum_{i = 0}^{k - 1} \alpha^i \cdot \mle{\pi}_i^{(\uparrow)}(r) \cdot \mle{t}_i^{(\uparrow)}(r)$. The verifier evaluates each $\mle{t}_i^{(\uparrow)}(r)$ on its own (via the factorization \eqref{eq:zeropad-msb-mle}). The remaining unknowns are the prover-claimed evaluations
 \[
   \alpha_i \coloneqq \mle{\pi}_i^{(\uparrow)}(r), \qquad i = 0, \ldots, k - 1.
 \]
@@ -1284,18 +1293,18 @@ To verify the $k$ evaluation claims $\alpha_i$ via a single BaseFold instance, w
 \[
   \boldsymbol{\pi}(X, Y) \coloneqq \sum_{i = 0}^{k - 1} \mle{\pi}_i^{(\uparrow)}(X) \cdot \mle{\eq}_{\log_2 k}(i, Y),
 \]
-in $X \in K^{\mathbf{n}}$ and $\log_2 k$ fresh oracle-index variables $Y \in K^{\log_2 k}$, so that $\boldsymbol{\pi}(X, i) = \mle{\pi}_i^{(\uparrow)}(X)$ for each $i \in \BB_{\log_2 k}$.
+in $X \in K^{\boldsymbol{\ell}}$ and $\log_2 k$ fresh oracle-index variables $Y \in K^{\log_2 k}$, so that $\boldsymbol{\pi}(X, i) = \mle{\pi}_i^{(\uparrow)}(X)$ for each $i \in \BB_{\log_2 k}$.
 
 The verifier samples $r' \gets K^{\log_2 k}$ and computes the target
 \[
   s' \coloneqq \sum_{i = 0}^{k - 1} \alpha_i \cdot \mle{\eq}_{\log_2 k}(i, r') = \boldsymbol{\pi}(r, r').
 \]
-The parties then run a single BaseFold instance on $\boldsymbol{\pi}$ at the point $(r, r')$ with target $s'$. The $k$ separately-committed codewords of $\pi_0, \ldots, \pi_{k - 1}$ from the LIOP together form the virtual oracle for $\boldsymbol{\pi}$: a BaseFold query at position $(e, y) \in E_\mathbf{n} \times \BB_{\log_2 k}$ is answered by querying the codeword of $\pi_y$ at position $e$, with the Merkle authentication path drawn from the original $\pi_y$ commitment.
+The parties then run a single BaseFold instance on $\boldsymbol{\pi}$ at the point $(r, r')$ with target $s'$. The $k$ separately-committed codewords of $\pi_0, \ldots, \pi_{k - 1}$ from the LIOP together form the virtual oracle for $\boldsymbol{\pi}$: a BaseFold query at position $(e, y) \in E_{\boldsymbol{\ell}} \times \BB_{\log_2 k}$ is answered by querying the codeword of $\pi_y$ at position $e$, with the Merkle authentication path drawn from the original $\pi_y$ commitment.
 
 \subsection{The Binius64 SNARK}
 \label{sec:binius64-snark}
 
-The Binius64 SNARK is the result of applying the compiler of \S\ref{sec:liop-to-snark} to the Binius64 LIOP of \S\ref{sec:binius-liop}. The LIOP has a single oracle $\pi = \textsf{pack}_\lambda(w) \colon \BB_{\ell_\text{pack}} \to K$ and ends with a single succinct linear query $(t, s)$, namely the random combination of the ring-switching and public-input-check queries (\S\ref{sec:public-input-check}). The compiler instantiates this LIOP query with a single BaseFold IOPP instance on the constrained Reed--Solomon code (RS code over $K$ with the constraint $\sum_{y} t(y) \cdot \pi(y) = s$), and applies BCS and Fiat--Shamir on top.
+The Binius64 SNARK is the result of applying the compiler of \S\ref{sec:liop-to-snark} to the Binius64 LIOP of \S\ref{sec:binius-liop}. The LIOP has a single oracle $\pi = \textsf{pack}_\lambda(w) \in K^{n_\text{pack}}$ and ends with a single succinct linear query $(t, s)$, namely the random combination of the ring-switching and public-input-check queries (\S\ref{sec:public-input-check}). The compiler zero-extends $\pi$ to length $2^{\ell_\text{pack}}$, instantiates this LIOP query with a single BaseFold IOPP instance on the constrained Reed--Solomon code (RS code over $K$ with the constraint $\sum_{y} t(y) \cdot \pi(y) = s$), and applies BCS and Fiat--Shamir on top.
 
 Concretely, the non-interactive proof consists of:
 \begin{itemize}
@@ -1331,7 +1340,7 @@ The assignment \emph{satisfies} the instance if
 \[
   (Az) \circ (Bz) = Cz,
 \]
-where $\circ$ denotes the entry-wise product. We pad $n_M$ and each segment size $n_\sigma$ to powers of two, $n_M = 2^{\ell_M}$ and $n_\sigma = 2^{\ell_\sigma}$, indexing constraints (matrix rows) by $\BB_{\ell_M}$ and the entries of segment $\sigma$ (matrix columns) by $\BB_{\ell_\sigma}$.
+where $\circ$ denotes the entry-wise product. We pad $n_M$ to a power of two, $n_M = 2^{\ell_M}$, indexing constraints (matrix rows) by $\BB_{\ell_M}$. The segment sizes $n_\sigma$ are arbitrary; we set $\ell_\sigma \coloneqq \lceil \log_2 n_\sigma \rceil$ and index the entries of segment $\sigma$ (matrix columns) by the first $n_\sigma$ vertices of $\BB_{\ell_\sigma}$, regarding the wiring matrices as zero on the remaining columns.
 
 \paragraph{Multilinear encoding.}
 Each wiring matrix $W_{\textsf{op}, \sigma} \colon \BB_{\ell_M} \times \BB_{\ell_\sigma} \to K$ and each segment $z_\sigma \colon \BB_{\ell_\sigma} \to K$ has a multilinear extension, written $\mle{W}_{\textsf{op}, \sigma}(X, Y)$ and $\mle{z}_\sigma(Y)$. For $M \in \set{A, B, C}$, write
@@ -1359,7 +1368,7 @@ IronSpartan departs from Spartan in how the wiring check is discharged, exploiti
 \[
   t_\sigma(Y) \coloneqq \mle{W}_{A, \sigma}(r_x, Y) + \gamma\, \mle{W}_{B, \sigma}(r_x, Y) + \gamma^2\, \mle{W}_{C, \sigma}(r_x, Y), \qquad \sigma \in \set{\textsf{pub}, \textsf{pre}, \textsf{wit}},
 \]
-a multilinear on $\BB_{\ell_\sigma}$ that the verifier evaluates from the public wiring matrices and the challenges $r_x, \gamma$. Batching the products $a, b, c$ with $\gamma$ and splitting across segments,
+a multilinear on $\BB_{\ell_\sigma}$ that the verifier evaluates from the public wiring matrices and the challenges $r_x, \gamma$; it vanishes on the columns $y \ge n_\sigma$, which no matrix addresses, as the operand condition of \S\ref{sec:liop} requires. Batching the products $a, b, c$ with $\gamma$ and splitting across segments,
 \[
   a + \gamma b + \gamma^2 c = \sum_{\sigma} \langle z_\sigma, t_\sigma \rangle = \langle z_{\textsf{pub}}, t_{\textsf{pub}} \rangle + \langle z_{\textsf{pre}}, t_{\textsf{pre}} \rangle + \langle z_{\textsf{wit}}, t_{\textsf{wit}} \rangle.
 \]
@@ -1491,11 +1500,7 @@ Masking the sumcheck and the oracle openings still leaves one leak: the constrai
 \label{sec:ironspartan-liop}
 
 \paragraph{Setup.}
-The setup pads the constraint count and each segment to power-of-two dimensions, reserving room for the dummy constraints. It chooses $\ell_M$ and the $\ell_\sigma$ with
-\[
-  2^{\ell_M} \ge n_M + 2, \qquad 2^{\ell_{\textsf{pub}}} \ge n_{\textsf{pub}}, \qquad 2^{\ell_{\textsf{pre}}} \ge n_{\textsf{pre}}, \qquad 2^{\ell_{\textsf{wit}}} \ge n_{\textsf{wit}} + 6.
-\]
-The two extra constraint rows hold the dummy constraints of \S\ref{sec:dummy-masking}, and the six extra witness-segment columns hold their fresh variables. The segments reserve no randomizable support: the randomness that hides the codeword openings is appended by the Batched ZK BaseFold compiler (\S\ref{sec:batched-zk-basefold}) outside the segments. Remaining padding entries are zero.
+The setup pads the constraint count to a power of two with room for the dummy constraints, $2^{\ell_M} \ge n_M + 2$, and appends six entries to the witness segment. The two extra constraint rows hold the dummy constraints of \S\ref{sec:dummy-masking}, and the six extra witness-segment entries hold their fresh variables. The segments are committed at their integer lengths (\S\ref{sec:liop}); the randomness that hides the codeword openings is appended by the Batched ZK BaseFold compiler (\S\ref{sec:batched-zk-basefold}) outside the segments.
 
 \paragraph{Protocol.}
 In keeping with the commit-and-prove setting, the prover first commits the precommit oracle $z_{\textsf{pre}}$. Once the public instance $z_{\textsf{pub}}$ is fixed, the prover commits the witness oracle $z_{\textsf{wit}}$ and the Libra oracle $\pi_g$ (the masking coefficients $g'$ of \S\ref{sec:zk-mle-check}). The parties then run the constraint-check reduction (\S\ref{sec:constraint-check-reduction}) followed by the reduction to inner-product claims (\S\ref{sec:ip-reduction}), terminating in linear queries on $z_{\textsf{pre}}$, $z_{\textsf{wit}}$, and $\pi_g$ -- three oracles with one query each, exactly the setting of Batched BaseFold (\S\ref{sec:batched-basefold}).
@@ -1551,11 +1556,11 @@ with $e_k$ the indicator of the key's index in $z_{\textsf{pre}}$ and the public
 The compiler of \S\ref{sec:liop-to-snark} is not zero-knowledge: BaseFold's query phase reveals codeword symbols of the committed oracles, and its folding phase reveals sumcheck round polynomials and folded codewords that depend on those oracles. We now give an \emph{alternate} compiler, \emph{Batched ZK BaseFold}, with the stronger guarantee that whenever the source LIOP is honest-verifier zero-knowledge (HVZK), the compiled interactive proof is HVZK as well -- and hence, after Fiat--Shamir, a non-interactive zero-knowledge argument in the random oracle model. It follows the construction of Diamond~\cite{Diamond:2025ac}, itself inspired by the low-degree-test masking technique of Aurora~\cite{Ben-Sasson:2019ab}, adapted to the batched setting of \S\ref{sec:batched-basefold}, and it replaces the Batched BaseFold instantiation of Stage~1 in the compiler of \S\ref{sec:liop-to-snark}, leaving the BCS and Fiat--Shamir stages untouched. It also merges the oracles of each interaction round into one commitment and accepts any number of queries, each spanning any number of oracles.
 
 \paragraph{Input.}
-The source LIOP's prover sends oracles $\pi_i \colon \BB_{n_i} \to K$, each flagged \emph{witness-dependent} or not (an oracle fixed by the public instance, such as a precomputed table, is not), and its verifier closes with linear queries (\S\ref{sec:liop})
+The source LIOP's prover sends oracles $\pi_i \in K^{n_i}$ with variable counts $\ell_i = \lceil \log_2 n_i \rceil$, each flagged \emph{witness-dependent} or not (an oracle fixed by the public instance, such as a precomputed table, is not), and its verifier closes with linear queries (\S\ref{sec:liop})
 \[
   \sum_i \langle \pi_i, t_{j, i} \rangle = s_j, \qquad j = 0, \ldots, J - 1,
 \]
-each involving any number of oracles. The oracles carry no randomizable support of their own; the compiler appends the padding it needs.
+each involving any number of oracles, with operands vanishing above their oracles. The compiler decides what occupies the committed vectors beyond the oracles.
 
 \paragraph{Leakage channels.}
 Four kinds of message in the compiled protocol depend on the oracles, and we hide each with its own source of randomness.
@@ -1567,22 +1572,22 @@ Four kinds of message in the compiled protocol depend on the oracles, and we hid
 \end{itemize}
 
 \paragraph{Round merging.}
-A \emph{round} of the LIOP is the set of oracles the prover sends between two consecutive verifier challenges. The compiler commits each round as one \emph{merged oracle}. Index the rounds by $r$, and let the round's constituents be $\pi_i$ for $i \in r$, sorted by nonincreasing $n_i$ and laid end to end: the constituent $\pi_i$ occupies the block of $2^{n_i}$ coordinates beginning at an offset that, by the sorting, is a multiple of $2^{n_i}$, so the block is addressed by a \emph{block index} $b_i \in \BB_{N_r - n_i}$ on the high coordinates. The merged oracle $M_r \colon \BB_{N_r} \to K$ is the function with
+A \emph{round} of the LIOP is the set of oracles the prover sends between two consecutive verifier challenges. The compiler commits each round as one \emph{merged oracle} $M_r \colon \BB_{\ell_r} \to K$, indexing rounds by $r$. Each constituent $\pi_i$, $i \in r$, is placed in a \emph{block} of $2^{\ell_i}$ coordinates at an offset that is a multiple of $2^{\ell_i}$, so the block is addressed by a \emph{block index} $b_i \in \BB_{\ell_r - \ell_i}$ on the high coordinates, and the constituent's \emph{extent} is the first $n_i$ coordinates of its block:
 \[
-  M_r(v, b_i) = \pi_i(v) \quad \text{for } v \in \BB_{n_i},\ i \in r,
+  M_r(v, b_i) = \pi_i(v) \quad \text{for } v < n_i,\ i \in r.
 \]
-on the constituent blocks, zero on the remaining coordinates except for the pad below, with $N_r$ the least length accommodating the constituents and the pad. A merged oracle is witness-dependent iff some constituent is; a public oracle sharing a round with a witness-dependent one is padded and masked along with it, at a cost in randomness but not in correctness. A query operand on a constituent becomes an operand on its merged oracle, extended by the block indicator,
+The extents must be disjoint, but blocks may nest: a block may lie in the slack $2^{\ell_j} - n_j$ above the extent of a larger constituent, which is where the small oracles of a round go when the round's largest oracle leaves room. The compiler sorts the constituents by nonincreasing $\ell_i$ and places each at the lowest aligned offset whose block avoids the extents already placed, with $\ell_r$ the least variable count that accommodates the constituents and the pad below; coordinates in no extent and not in the pad are zero. A merged oracle is witness-dependent iff some constituent is; a public oracle sharing a round with a witness-dependent one is padded and masked along with it, at a cost in randomness but not in correctness. A query operand on a constituent becomes an operand on its merged oracle, extended by the block indicator,
 \[
-  \langle \pi_i, t \rangle = \langle M_r, t^{(b_i)} \rangle, \qquad t^{(b_i)}(v, u) \coloneqq t(v) \cdot \mle{\eq}_{N_r - n_i}(b_i, u), \quad (v, u) \in \BB_{n_i} \times \BB_{N_r - n_i},
+  \langle \pi_i, t \rangle = \langle M_r, t^{(b_i)} \rangle, \qquad t^{(b_i)}(v, u) \coloneqq t(v) \cdot \mle{\eq}_{\ell_r - \ell_i}(b_i, u), \quad (v, u) \in \BB_{\ell_i} \times \BB_{\ell_r - \ell_i},
 \]
-the table that agrees with $t$ on block $b_i$ and vanishes elsewhere, so the inner product sees only the constituent's own data. Operands of one query on two constituents of the same merged oracle add. Henceforth every query is a query on the merged oracles $M_r$, with the same targets.
+the table that agrees with $t$ on block $b_i$ and vanishes elsewhere. Because $t$ vanishes above $n_i$ (\S\ref{sec:liop}), $t^{(b_i)}$ vanishes outside the constituent's extent, so the inner product sees only the constituent's own data, whatever else shares its block. Operands of one query on two constituents of the same merged oracle add. Henceforth every query is a query on the merged oracles $M_r$, with the same targets.
 
 \paragraph{ZK pad.}
-Let $m$ denote the variable count of the merged oracle holding the compiler's Libra oracle (defined in the opening phase below; concretely $m = O(\log \mathbf{n} + \log q)$). For each witness-dependent merged oracle the compiler reserves a block $P_r \subseteq \BB_{N_r}$ of
+Let $m$ denote the variable count of the merged oracle holding the compiler's Libra oracle (defined in the opening phase below; concretely $m = O(\log \boldsymbol{\ell} + \log q)$). For each witness-dependent merged oracle the compiler reserves a set $P_r \subseteq \BB_{\ell_r}$ of
 \[
   |P_r| \ge q + 2m + 2
 \]
-coordinates above the constituent blocks, the \emph{ZK pad}, enlarging $N_r$ by one when the slack above the constituents is too small, and the prover fills $P_r$ with independent uniform field elements. Every extended operand $t^{(b_i)}$ vanishes on $P_r$, so the pad enters no query: it is a randomizable support (\S\ref{sec:liop}) of the merged oracle, filled uniformly. Its budget is spent on the four groups of linear functionals of $M_r$ that the opening phase reveals, one entry of randomness per revealed functional:
+coordinates outside every constituent's extent, the \emph{ZK pad}, enlarging $\ell_r$ by one when the slack left by the constituents is too small, and the prover fills $P_r$ with independent uniform field elements. Every extended operand $t^{(b_i)}$ vanishes on $P_r$, so the pad enters no query. Its budget is spent on the four groups of linear functionals of $M_r$ that the opening phase reveals, one entry of randomness per revealed functional:
 \begin{center}
 \begin{tabular}{lc}
 \hline
@@ -1598,9 +1603,9 @@ the evaluation $\alpha'_r$ output by Phase~A$'$ & $1$ \\
 No further coordinate is needed to make the Merkle commitment hiding: every opened leaf of a masked oracle also carries a symbol of the uniform mask $\omega_r$ introduced next, which already salts it.
 
 \paragraph{ZK mask and commit phase.}
-When the LIOP prover completes a round, the compiled prover forms $M_r$ as above. If the round is not witness-dependent it commits $\textsf{Enc}_{N_r}(M_r)$ as in \S\ref{sec:liop-to-snark}. Otherwise it samples a uniform \emph{mask} $\omega_r \colon \BB_{N_r} \to K$ and commits the \emph{interleaved} Reed--Solomon codeword whose two rows are $\textsf{Enc}_{N_r}(M_r)$ and $\textsf{Enc}_{N_r}(\omega_r)$: the Merkle commitment is taken over the columns of this $2 \times |E_{N_r}|$ array, so that opening a single position $e$ exposes both $\textsf{Enc}_{N_r}(M_r)[e]$ and $\textsf{Enc}_{N_r}(\omega_r)[e]$ under one authentication path. We regard the pair as the single multilinear
+When the LIOP prover completes a round, the compiled prover forms $M_r$ as above. If the round is not witness-dependent it commits $\textsf{Enc}_{\ell_r}(M_r)$ as in \S\ref{sec:liop-to-snark}. Otherwise it samples a uniform \emph{mask} $\omega_r \colon \BB_{\ell_r} \to K$ and commits the \emph{interleaved} Reed--Solomon codeword whose two rows are $\textsf{Enc}_{\ell_r}(M_r)$ and $\textsf{Enc}_{\ell_r}(\omega_r)$: the Merkle commitment is taken over the columns of this $2 \times |E_{\ell_r}|$ array, so that opening a single position $e$ exposes both $\textsf{Enc}_{\ell_r}(M_r)[e]$ and $\textsf{Enc}_{\ell_r}(\omega_r)[e]$ under one authentication path. We regard the pair as the single multilinear
 \[
-  \mle{G}_r(X, Y) \coloneqq (1 - Y) \cdot \mle{M}_r(X) + Y \cdot \mle{\omega}_r(X), \qquad X \in K^{N_r},\ Y \in K,
+  \mle{G}_r(X, Y) \coloneqq (1 - Y) \cdot \mle{M}_r(X) + Y \cdot \mle{\omega}_r(X), \qquad X \in K^{\ell_r},\ Y \in K,
 \]
 whose restriction to $Y \in \BB_1$ is the committed pair and whose value at $Y = 0$ is the message. The interleave coordinate $Y$ is absent from an unmasked oracle, which is constant in $Y$.
 
@@ -1622,59 +1627,59 @@ since evaluation on $\set{0, \infty}^n$ reads off monomial coefficients and the 
 because $\mle{\eq}(v_j, \sigma_j) = \rho_j^{v_j} / (1 + \rho_j)$ for $v_j \in \BB_1$. The excluded event $\rho_j = 1$ has probability $n / |K|$ over a uniform $\rho$, and the verifier rejects if it occurs. This translation is what hands the output of the batch sumchecks to BaseFold, which runs over the Boolean hypercube.
 
 \paragraph{Opening phase.}
-After the LIOP's final challenge the parties hold the queries on the merged oracles. Write $\mathbf{n} \coloneqq \max_r N_r$. The opening proceeds in three phases.
+After the LIOP's final challenge the parties hold the queries on the merged oracles. Write $\boldsymbol{\ell} \coloneqq \max_r \ell_r$. The opening proceeds in three phases.
 
 \begin{protocol}[Batched ZK BaseFold opening]
 \label{prot:batched-zk-basefold}
-\emph{Claims:} $\sum_r \langle M_r, t_{j, r} \rangle = s_j$ for $j < J$, on committed merged oracles $M_r \colon \BB_{N_r} \to K$.
+\emph{Claims:} $\sum_r \langle M_r, t_{j, r} \rangle = s_j$ for $j < J$, on committed merged oracles $M_r \colon \BB_{\ell_r} \to K$.
 
 \emph{Phase~A (batch sumcheck).}
 \begin{enumerate}
-\item The verifier samples a batching challenge $\mu \gets K$. Set $s_f \coloneqq \sum_j \mu^j s_j$ and, for each merged oracle, the combined operand $T_r \coloneqq \sum_j \mu^j t_{j, r} \in K^{\BB_{N_r}}$. By \eqref{eq:infty-inner-product} the batched claim reads
+\item The verifier samples a batching challenge $\mu \gets K$. Set $s_f \coloneqq \sum_j \mu^j s_j$ and, for each merged oracle, the combined operand $T_r \coloneqq \sum_j \mu^j t_{j, r} \in K^{\BB_{\ell_r}}$. By \eqref{eq:infty-inner-product} the batched claim reads
 \[
-  s_f = \sum_{x \in \set{0, \infty}^{\mathbf{n}}} f(x), \qquad f(X) \coloneqq \sum_r M_r^\infty(X_{< N_r}) \cdot T_r^\infty(X_{< N_r}),
+  s_f = \sum_{x \in \set{0, \infty}^{\boldsymbol{\ell}}} f(x), \qquad f(X) \coloneqq \sum_r M_r^\infty(X_{< \ell_r}) \cdot T_r^\infty(X_{< \ell_r}),
 \]
 a bare sumcheck claim on a summand of individual degree $2$.
-\item The prover samples a Libra mask $h$ on $\mathbf{n}$ variables with $d = 2$ -- each univariate $h_j$ of degree $\le 1$, so $h$ has $1 + 2\mathbf{n}$ coefficients -- and commits its coefficient table $h'$ as the oracle $\pi_h$ exactly as in \S\ref{sec:libra}, as a witness-dependent oracle in a round of its own; let $m$ be the variable count of the merged oracle holding $\pi_h$ (so $2^m \ge 2^{\nu + \delta} + q + 2m + 2$). The parties run the Libra-masked sumcheck of Protocol~\ref{prot:zk-sumcheck-libra} on $s_f = \sum_{x \in \set{0, \infty}^{\mathbf{n}}} f(x)$, over the infinity hypercube, where it is hiding in every characteristic (Lemma~\ref{lem:masking-uniform}).
-\item At the sumcheck point $\rho \in K^{\mathbf{n}}$, the reduction outputs $f^* = f(\rho)$ and the query $\beta = \langle h', \textsf{libra-eval}_\rho \rangle$ on $\pi_h$. The prover sends $\alpha_r \coloneqq M_r^\infty(\rho_{< N_r})$ for every $r$; the verifier evaluates each $T_r^\infty(\rho_{< N_r})$ on its own and checks $\sum_r \alpha_r \cdot T_r^\infty(\rho_{< N_r}) = f^*$.
+\item The prover samples a Libra mask $h$ on $\boldsymbol{\ell}$ variables with $d = 2$ -- each univariate $h_j$ of degree $\le 1$, so $h$ has $1 + 2\boldsymbol{\ell}$ coefficients -- and commits its coefficient table $h'$ as the oracle $\pi_h$ exactly as in \S\ref{sec:libra}, as a witness-dependent oracle in a round of its own; let $m$ be the variable count of the merged oracle holding $\pi_h$ (so $2^m \ge 2^{\nu + \delta} + q + 2m + 2$). The parties run the Libra-masked sumcheck of Protocol~\ref{prot:zk-sumcheck-libra} on $s_f = \sum_{x \in \set{0, \infty}^{\boldsymbol{\ell}}} f(x)$, over the infinity hypercube, where it is hiding in every characteristic (Lemma~\ref{lem:masking-uniform}).
+\item At the sumcheck point $\rho \in K^{\boldsymbol{\ell}}$, the reduction outputs $f^* = f(\rho)$ and the query $\beta = \langle h', \textsf{libra-eval}_\rho \rangle$ on $\pi_h$. The prover sends $\alpha_r \coloneqq M_r^\infty(\rho_{< \ell_r})$ for every $r$; the verifier evaluates each $T_r^\infty(\rho_{< \ell_r})$ on its own and checks $\sum_r \alpha_r \cdot T_r^\infty(\rho_{< \ell_r}) = f^*$.
 \end{enumerate}
 
-\emph{Phase~A$'$ (rerandomization).} The claims now in hand are the evaluations $M_r^\infty(\rho_{< N_r}) = \alpha_r$ and the query $\langle h', \textsf{libra-eval}_\rho \rangle = \beta$ on $\pi_h$, whose operand is not of evaluation form. This phase reduces all of them to evaluations at one point.
+\emph{Phase~A$'$ (rerandomization).} The claims now in hand are the evaluations $M_r^\infty(\rho_{< \ell_r}) = \alpha_r$ and the query $\langle h', \textsf{libra-eval}_\rho \rangle = \beta$ on $\pi_h$, whose operand is not of evaluation form. This phase reduces all of them to evaluations at one point.
 \begin{enumerate}
 \item The verifier samples $\mu' \gets K$. Writing $\rho = (\rho_{< m}, \rho_{\ge m})$ and $e_\rho(Y) \coloneqq \prod_{j < m} (1 + \rho_j Y_j)$, the multilinear whose coefficient table is $(\rho_{< m}^y)_{y \in \BB_m}$, each evaluation claim is an $m$-variate sum,
 \[
-  \alpha_r = \sum_{y \in \set{0, \infty}^m} M_r^\infty(y, \rho_{m \le \cdot < N_r}) \cdot e_\rho(y),
+  \alpha_r = \sum_{y \in \set{0, \infty}^m} M_r^\infty(y, \rho_{m \le \cdot < \ell_r}) \cdot e_\rho(y),
 \]
-by \eqref{eq:infty-inner-product} applied to the coefficient table of $M_r^\infty(\cdot, \rho_{m \le \cdot < N_r})$ (for $N_r < m$ the second argument is absent), and the query on $\pi_h$ is $\beta = \sum_{y \in \set{0, \infty}^m} h'^\infty(y) \cdot \textsf{libra-eval}_\rho^\infty(y)$. The parties run a bare sumcheck over $\set{0, \infty}^m$ on the $\mu'$-batch of these $m$-variate degree-$2$ claims, without a Libra mask.
-\item At its point $\rho' \in K^m$ the prover sends $\alpha'_r \coloneqq M_r^\infty(\rho', \rho_{m \le \cdot < N_r})$ for every $r$ and $\beta' \coloneqq h'^\infty(\rho')$; the verifier evaluates $e_\rho(\rho')$ and $\textsf{libra-eval}_\rho^\infty(\rho')$ and checks the batched reduced claim. Set $\rho'' \coloneqq (\rho', \rho_{\ge m}) \in K^{\mathbf{n}}$: every merged oracle now carries the evaluation claim $M_r^\infty(\rho''_{< N_r}) = \alpha'_r$, and $\pi_h$ (within its merged oracle) the claim $h'^\infty(\rho''_{< m}) = \beta'$, all at prefixes of the one point $\rho''$.
+by \eqref{eq:infty-inner-product} applied to the coefficient table of $M_r^\infty(\cdot, \rho_{m \le \cdot < \ell_r})$ (for $\ell_r < m$ the second argument is absent), and the query on $\pi_h$ is $\beta = \sum_{y \in \set{0, \infty}^m} h'^\infty(y) \cdot \textsf{libra-eval}_\rho^\infty(y)$. The parties run a bare sumcheck over $\set{0, \infty}^m$ on the $\mu'$-batch of these $m$-variate degree-$2$ claims, without a Libra mask.
+\item At its point $\rho' \in K^m$ the prover sends $\alpha'_r \coloneqq M_r^\infty(\rho', \rho_{m \le \cdot < \ell_r})$ for every $r$ and $\beta' \coloneqq h'^\infty(\rho')$; the verifier evaluates $e_\rho(\rho')$ and $\textsf{libra-eval}_\rho^\infty(\rho')$ and checks the batched reduced claim. Set $\rho'' \coloneqq (\rho', \rho_{\ge m}) \in K^{\boldsymbol{\ell}}$: every merged oracle now carries the evaluation claim $M_r^\infty(\rho''_{< \ell_r}) = \alpha'_r$, and $\pi_h$ (within its merged oracle) the claim $h'^\infty(\rho''_{< m}) = \beta'$, all at prefixes of the one point $\rho''$.
 \end{enumerate}
 
 \emph{Phase~B (Batched BaseFold).}
 \begin{enumerate}
-\item The verifier rejects if some $\rho''_j = 1$; otherwise both parties translate each claim by \eqref{eq:monomial-to-mle} into the multilinear-extension claim $\mle{M}_r(\sigma_{< N_r}) = a_r$ at $\sigma_j \coloneqq \rho''_j / (1 + \rho''_j)$, with $a_r \coloneqq \alpha'_r / \prod_{j < N_r} (1 + \rho''_j)$, and likewise for $\pi_h$'s merged oracle. In terms of the committed pairs this is $\mle{G}_r(\sigma_{< N_r}, 0) = a_r$: an evaluation claim with target coordinate $0$ in the interleave variable $Y$.
-\item The verifier samples fresh oracle-index challenges $r' \gets K^{\lceil \log_2 \#\text{oracles} \rceil}$, \emph{after} the $a_r$ are fixed, and the parties run Batched BaseFold Step~2 (\S\ref{sec:batched-basefold}) on the piecewise-concatenated oracle built from the lifted $\mle{G}_r$ at the point $(\sigma, 0, r')$ with target $s' \coloneqq \sum_r a_r \cdot \mle{\eq}(r, r')$. The single BaseFold instance (\S\ref{sec:basefold}) opens with one MLE-check round for the interleave variable: the prover sends the linear round polynomial, the verifier checks it against $s'$ at $Y = 0$, samples $\gamma \gets K$, and both parties fold the interleaved pairs to the codewords $(1 - \gamma) \cdot \textsf{Enc}_{N_r}(M_r) + \gamma \cdot \textsf{Enc}_{N_r}(\omega_r)$, which the verifier emulates at a queried column from the two rows of the commitment. Unmasked oracles are unaffected by this fold. The remaining rounds and the query phase are those of \S\ref{sec:basefold} and \S\ref{sec:lifted-basefold}, over the Boolean hypercube.
+\item The verifier rejects if some $\rho''_j = 1$; otherwise both parties translate each claim by \eqref{eq:monomial-to-mle} into the multilinear-extension claim $\mle{M}_r(\sigma_{< \ell_r}) = a_r$ at $\sigma_j \coloneqq \rho''_j / (1 + \rho''_j)$, with $a_r \coloneqq \alpha'_r / \prod_{j < \ell_r} (1 + \rho''_j)$, and likewise for $\pi_h$'s merged oracle. In terms of the committed pairs this is $\mle{G}_r(\sigma_{< \ell_r}, 0) = a_r$: an evaluation claim with target coordinate $0$ in the interleave variable $Y$.
+\item The verifier samples fresh oracle-index challenges $r' \gets K^{\lceil \log_2 \#\text{oracles} \rceil}$, \emph{after} the $a_r$ are fixed, and the parties run Batched BaseFold Step~2 (\S\ref{sec:batched-basefold}) on the piecewise-concatenated oracle built from the lifted $\mle{G}_r$ at the point $(\sigma, 0, r')$ with target $s' \coloneqq \sum_r a_r \cdot \mle{\eq}(r, r')$. The single BaseFold instance (\S\ref{sec:basefold}) opens with one MLE-check round for the interleave variable: the prover sends the linear round polynomial, the verifier checks it against $s'$ at $Y = 0$, samples $\gamma \gets K$, and both parties fold the interleaved pairs to the codewords $(1 - \gamma) \cdot \textsf{Enc}_{\ell_r}(M_r) + \gamma \cdot \textsf{Enc}_{\ell_r}(\omega_r)$, which the verifier emulates at a queried column from the two rows of the commitment. Unmasked oracles are unaffected by this fold. The remaining rounds and the query phase are those of \S\ref{sec:basefold} and \S\ref{sec:lifted-basefold}, over the Boolean hypercube.
 \end{enumerate}
 \end{protocol}
 
-Phase~A is the one sumcheck of the document run over the infinity hypercube: that is where Libra masking of a bare sumcheck is hiding in characteristic $2$ (\S\ref{sec:libra}), and its summand has degree $2$ throughout. The document's other sumchecks stay on $\BB_n$, which the infinity hypercube cannot replace in batched sumchecks of mixed degree, where the leading coefficient read at $\infty$ depends on the degree bound. Phase~A$'$ costs the prover one pass over each merged oracle, to form the coefficient tables $M_r^\infty(\cdot, \rho_{m \le \cdot < N_r})$, and $m$ rounds; it is cheap because the mask oracle is small. Phase~B is unchanged from \S\ref{sec:batched-basefold} except for the extra interleave round, which costs one linear round polynomial.
+Phase~A is the one sumcheck of the document run over the infinity hypercube: that is where Libra masking of a bare sumcheck is hiding in characteristic $2$ (\S\ref{sec:libra}), and its summand has degree $2$ throughout. The document's other sumchecks stay on $\BB_n$, which the infinity hypercube cannot replace in batched sumchecks of mixed degree, where the leading coefficient read at $\infty$ depends on the degree bound. Phase~A$'$ costs the prover one pass over each merged oracle, to form the coefficient tables $M_r^\infty(\cdot, \rho_{m \le \cdot < \ell_r})$, and $m$ rounds; it is cheap because the mask oracle is small. Phase~B is unchanged from \S\ref{sec:batched-basefold} except for the extra interleave round, which costs one linear round polynomial.
 
 \paragraph{Soundness.}
-Fix the committed $M_r$, $\omega_r$, and $h'$. If some query is unsatisfied then $s_f \ne \sum_x f(x)$ except with probability $J / |K|$ over $\mu$ (Schwartz--Zippel on the batching polynomial); the Libra blending adds $1 / |K|$ (the masked claim is affine in $\alpha$); and the sumcheck over $\set{0, \infty}^{\mathbf{n}}$ has the soundness error $2 \mathbf{n} / |K|$ of its Boolean counterpart~\cite[\S 3]{cryptoeprint:2026/762}. A prover that reaches the end of Phase~A with a false running claim must therefore send some $\alpha_r \ne M_r^\infty(\rho_{< N_r})$ or a false $\beta$. Phase~A$'$ is a sumcheck on the $\mu'$-batch of exactly these evaluation claims, so with error $O(J + m) / |K|$ it forces a false $\alpha'_r$ or $\beta'$, and the fresh $r'$ of Phase~B makes $s'$ a random linear test of all of them at once, so some translated claim $a_r$ is false, which BaseFold rejects with its own error (\S\ref{sec:basefold}, \S\ref{sec:lifted-basefold}). Sampling $r'$ after the $a_r$ is essential: a prover who knew $r'$ in advance could satisfy both the Phase~A$'$ closing check and $s' = \sum_r a_r\, \mle{\eq}(r, r')$ with individually false $a_r$. The interleave round is an ordinary MLE-check round, and $(1 - \gamma) \textsf{Enc}(M_r) + \gamma \textsf{Enc}(\omega_r)$ is a codeword of the same code, so Phase~B inherits the analysis of \S\ref{sec:batched-basefold} verbatim. Knowledge soundness is preserved: the extractor recovers each $M_r$ from the first row of its interleaved commitment, and each constituent is a block of it.
+Fix the committed $M_r$, $\omega_r$, and $h'$. If some query is unsatisfied then $s_f \ne \sum_x f(x)$ except with probability $J / |K|$ over $\mu$ (Schwartz--Zippel on the batching polynomial); the Libra blending adds $1 / |K|$ (the masked claim is affine in $\alpha$); and the sumcheck over $\set{0, \infty}^{\boldsymbol{\ell}}$ has the soundness error $2 \boldsymbol{\ell} / |K|$ of its Boolean counterpart~\cite[\S 3]{cryptoeprint:2026/762}. A prover that reaches the end of Phase~A with a false running claim must therefore send some $\alpha_r \ne M_r^\infty(\rho_{< \ell_r})$ or a false $\beta$. Phase~A$'$ is a sumcheck on the $\mu'$-batch of exactly these evaluation claims, so with error $O(J + m) / |K|$ it forces a false $\alpha'_r$ or $\beta'$, and the fresh $r'$ of Phase~B makes $s'$ a random linear test of all of them at once, so some translated claim $a_r$ is false, which BaseFold rejects with its own error (\S\ref{sec:basefold}, \S\ref{sec:lifted-basefold}). Sampling $r'$ after the $a_r$ is essential: a prover who knew $r'$ in advance could satisfy both the Phase~A$'$ closing check and $s' = \sum_r a_r\, \mle{\eq}(r, r')$ with individually false $a_r$. The interleave round is an ordinary MLE-check round, and $(1 - \gamma) \textsf{Enc}(M_r) + \gamma \textsf{Enc}(\omega_r)$ is a codeword of the same code, so Phase~B inherits the analysis of \S\ref{sec:batched-basefold} verbatim. Knowledge soundness is preserved: the extractor recovers each $M_r$ from the first row of its interleaved commitment, and each constituent is the extent of its block.
 
 \paragraph{Zero knowledge.}
 Each leakage channel is covered by one source of randomness, and we take them in protocol order.
 \begin{itemize}
-\item \emph{Phase~A} reveals $s_h$, the round polynomials $R^{(i)} = R_f^{(i)} + \alpha R_h^{(i)}$, and $\beta = h(\rho)$. The combined operands $T_r$ vanish on the pads, so the $R_f^{(i)}$ are functions of the constituents alone and the pad cannot help here; the Libra mask does. By Lemma~\ref{lem:masking-uniform} the masking messages are uniform over the infinity hypercube in every characteristic, so for $\alpha \ne 0$ the transcript of Phase~A is uniform and the simulator of Appendix~\ref{app:zk-sumcheck} applies, with $f^*$ supplied by the next item. The evaluations $\alpha_r = M_r^\infty(\rho_{< N_r})$ are revealed; each is a linear functional of $M_r$ that touches the pad with the monomial weights $\rho^v$, $v \in P_r$.
-\item \emph{Phase~A$'$} reveals $2m$ round coefficients, the $\alpha'_r$, and $\beta'$. The Libra mask does not cover this phase: the masking map is a bijection, so the coefficients of $h'$ are determined by the Phase~A transcript up to the unknown $R_f^{(i)}$, and every further linear functional of $h'$ -- which the Phase~A$'$ round polynomials contain, through the partial sums of $h'^\infty \cdot \textsf{libra-eval}_\rho^\infty$ -- discloses a linear functional of the unmasked $R_f^{(i)}$. Each transmitted coefficient is, however, such a functional \emph{added to} a partial sum of $M_r^\infty(\cdot, \rho_{m \le \cdot < N_r}) \cdot e_\rho$, which touches the pads: the pad entries are monomial coefficients of $M_r^\infty$ and enter with the nonzero weights $\rho_{\ge m}^{u}$. The sum is uniform provided the pad functionals are independent, which is Lemma~\ref{lem:pad-independence}. The claim $\beta' = h'^\infty(\rho')$ touches the pad of $\pi_h$'s merged oracle in the same way.
-\item \emph{Phase~B} and the query phase. For $\gamma \ne 0$ the folded codeword $(1 - \gamma) \textsf{Enc}(M_r) + \gamma \textsf{Enc}(\omega_r)$ is a uniform codeword, so the folding-phase transcript -- the interleave round polynomial, which reveals $\sum_r \mle{\eq}(r, r')\, \mle{\omega}_r(\sigma)$, the later round polynomials, the intermediate codewords, and the final codeword -- is independent of the messages. The query phase reveals $q$ symbols of each $\textsf{Enc}_{N_r}(M_r)$ outright, which the pad covers, and $q$ symbols of $\textsf{Enc}_{N_r}(\omega_r)$, which are uniform.
+\item \emph{Phase~A} reveals $s_h$, the round polynomials $R^{(i)} = R_f^{(i)} + \alpha R_h^{(i)}$, and $\beta = h(\rho)$. The combined operands $T_r$ vanish on the pads, so the $R_f^{(i)}$ are functions of the constituents alone and the pad cannot help here; the Libra mask does. By Lemma~\ref{lem:masking-uniform} the masking messages are uniform over the infinity hypercube in every characteristic, so for $\alpha \ne 0$ the transcript of Phase~A is uniform and the simulator of Appendix~\ref{app:zk-sumcheck} applies, with $f^*$ supplied by the next item. The evaluations $\alpha_r = M_r^\infty(\rho_{< \ell_r})$ are revealed; each is a linear functional of $M_r$ that touches the pad with the monomial weights $\rho^v$, $v \in P_r$.
+\item \emph{Phase~A$'$} reveals $2m$ round coefficients, the $\alpha'_r$, and $\beta'$. The Libra mask does not cover this phase: the masking map is a bijection, so the coefficients of $h'$ are determined by the Phase~A transcript up to the unknown $R_f^{(i)}$, and every further linear functional of $h'$ -- which the Phase~A$'$ round polynomials contain, through the partial sums of $h'^\infty \cdot \textsf{libra-eval}_\rho^\infty$ -- discloses a linear functional of the unmasked $R_f^{(i)}$. Each transmitted coefficient is, however, such a functional \emph{added to} a partial sum of $M_r^\infty(\cdot, \rho_{m \le \cdot < \ell_r}) \cdot e_\rho$, which touches the pads: the pad entries are monomial coefficients of $M_r^\infty$ and enter with the nonzero weights $\rho_{\ge m}^{u}$. The sum is uniform provided the pad functionals are independent, which is Lemma~\ref{lem:pad-independence}. The claim $\beta' = h'^\infty(\rho')$ touches the pad of $\pi_h$'s merged oracle in the same way.
+\item \emph{Phase~B} and the query phase. For $\gamma \ne 0$ the folded codeword $(1 - \gamma) \textsf{Enc}(M_r) + \gamma \textsf{Enc}(\omega_r)$ is a uniform codeword, so the folding-phase transcript -- the interleave round polynomial, which reveals $\sum_r \mle{\eq}(r, r')\, \mle{\omega}_r(\sigma)$, the later round polynomials, the intermediate codewords, and the final codeword -- is independent of the messages. The query phase reveals $q$ symbols of each $\textsf{Enc}_{\ell_r}(M_r)$ outright, which the pad covers, and $q$ symbols of $\textsf{Enc}_{\ell_r}(\omega_r)$, which are uniform.
 \end{itemize}
 
 \begin{lemma}[Pad independence; proof deferred]
 \label{lem:pad-independence}
-Fix a witness-dependent merged oracle $M_r$ with pad $P_r$, $|P_r| \ge q + 2m + 2$. Consider the $q + 2m + 2$ linear functionals of $M_r \in K^{\BB_{N_r}}$ revealed by Protocol~\ref{prot:batched-zk-basefold}: the $q$ codeword symbols $M_r \mapsto \textsf{Enc}_{N_r}(M_r)[e]$ at the queried positions $e$; the evaluation $M_r \mapsto M_r^\infty(\rho_{< N_r})$; the $2m$ transmitted coefficients of the Phase~A$'$ round polynomials, as functionals of $M_r$; and the evaluation $M_r \mapsto M_r^\infty(\rho''_{< N_r})$. Over uniform challenges $\rho, \rho'$ and uniform query positions, the restrictions of these functionals to the coordinates $P_r$ are linearly independent except with probability $\text{poly}(q, m, N_r) / |K|$.
+Fix a witness-dependent merged oracle $M_r$ with pad $P_r$, $|P_r| \ge q + 2m + 2$. Consider the $q + 2m + 2$ linear functionals of $M_r \in K^{\BB_{\ell_r}}$ revealed by Protocol~\ref{prot:batched-zk-basefold}: the $q$ codeword symbols $M_r \mapsto \textsf{Enc}_{\ell_r}(M_r)[e]$ at the queried positions $e$; the evaluation $M_r \mapsto M_r^\infty(\rho_{< \ell_r})$; the $2m$ transmitted coefficients of the Phase~A$'$ round polynomials, as functionals of $M_r$; and the evaluation $M_r \mapsto M_r^\infty(\rho''_{< \ell_r})$. Over uniform challenges $\rho, \rho'$ and uniform query positions, the restrictions of these functionals to the coordinates $P_r$ are linearly independent except with probability $\text{poly}(q, m, \ell_r) / |K|$.
 \end{lemma}
 
-The $q$ codeword functionals are those the randomizable-support analysis of Diamond~\cite{Diamond:2025ac} treats; the new content is that the $2m + 2$ evaluation-type functionals, each a sum of monomial weights at a random point over a sub-cube, are independent of them and of each other on the pad. We state the lemma as the hypothesis the simulator needs and defer its proof. Granting it, the pad entries are uniform and appear in no other message, so the revealed values are jointly uniform, and a simulator reproduces the compiled transcript from the targets $s_j$ alone: uniform values for every message above, with the evaluation claims and the interleave round programmed to satisfy the verifier's checks, and the HVZK simulator of the source LIOP supplying the rest. The three sources of randomness cover disjoint messages -- the mask $h$ the Phase~A round polynomials, the pads the evaluation claims, the Phase~A$'$ round polynomials, and the opened symbols, and the masks $\omega_r$ the folding phase -- and each is sampled fresh per proof.
+The $q$ codeword functionals are those the analysis of Diamond~\cite{Diamond:2025ac} treats; the new content is that the $2m + 2$ evaluation-type functionals, each a sum of monomial weights at a random point over a sub-cube, are independent of them and of each other on the pad. We state the lemma as the hypothesis the simulator needs and defer its proof. Granting it, the pad entries are uniform and appear in no other message, so the revealed values are jointly uniform, and a simulator reproduces the compiled transcript from the targets $s_j$ alone: uniform values for every message above, with the evaluation claims and the interleave round programmed to satisfy the verifier's checks, and the HVZK simulator of the source LIOP supplying the rest. The three sources of randomness cover disjoint messages -- the mask $h$ the Phase~A round polynomials, the pads the evaluation claims, the Phase~A$'$ round polynomials, and the opened symbols, and the masks $\omega_r$ the folding phase -- and each is sampled fresh per proof.
 
 \subsection{Compiling Binius64 to a ZK-SNARK}
 \label{sec:binius-zk-snark}
@@ -1688,10 +1693,10 @@ Following that composition, the composed prover first precommits, in IronSpartan
 The one place the inner oracle survives into the compiled argument is the terminal linear query $\langle \pi, t \rangle = s$ -- the combined ring-switching and public-input query of \S\ref{sec:protocol-overview}. Following \S\ref{sec:proof-composition}, the prover sends the ciphertext $c = s + k$ of the target under its precommitted key, the R1CS asserts $s = c - k$, and the compiler receives the query \eqref{eq:target-relation}.
 
 \paragraph{Oracles and rounds.}
-The composed LIOP commits, in order: $z_{\textsf{pre}}$, before the statement is fixed; the packed witness $\pi$, which the inner prover sends before any challenge, so that $z_{\textsf{pre}}$ and $\pi$ fall in the same round and are merged into one committed oracle; then, once the inner LIOP has run and the R1CS instance is formed, IronSpartan's $z_{\textsf{wit}}$ and Libra oracle $\pi_g$, which share a round. The compiler adds its own Libra oracle $\pi_h$ in the opening phase. All of these are witness-dependent, so every merged oracle carries a ZK pad of $q + 2m + 2$ coordinates and a mask. The queries are \eqref{eq:target-relation}, whose two operands land on the one merged oracle and add; IronSpartan's queries $(t_{\textsf{pre}}, s_{\textsf{pre}})$ on $z_{\textsf{pre}}$, $(t_{\textsf{wit}}, s_{\textsf{wit}})$ on $z_{\textsf{wit}}$, and its Libra query on $\pi_g$ (\S\ref{sec:ip-reduction}); and the compiler's Libra query on $\pi_h$. IronSpartan's segments need no randomizable support of their own (\S\ref{sec:ironspartan-liop}); only its dummy constraints (\S\ref{sec:dummy-masking}) remain, since the products $(a, b, c)$ it reveals are its own messages. Compiling Stage~1 with Batched ZK BaseFold and leaving the BCS and Fiat--Shamir stages of \S\ref{sec:liop-to-snark} untouched yields a non-interactive zero-knowledge argument for the Binius64 relation in the random oracle model.
+The composed LIOP commits, in order: $z_{\textsf{pre}}$, before the statement is fixed; the packed witness $\pi$, which the inner prover sends before any challenge, so that $z_{\textsf{pre}}$ and $\pi$ fall in the same round and are merged into one committed oracle; then, once the inner LIOP has run and the R1CS instance is formed, IronSpartan's $z_{\textsf{wit}}$ and Libra oracle $\pi_g$, which share a round. The compiler adds its own Libra oracle $\pi_h$ in the opening phase. All of these are witness-dependent, so every merged oracle carries a ZK pad of $q + 2m + 2$ coordinates and a mask. The first merged oracle is dominated by $\pi$, and $z_{\textsf{pre}}$ and the pad nest in the slack $2^{\ell_\text{pack}} - n_\text{pack}$ above it (\S\ref{sec:batched-zk-basefold}) whenever that slack holds an aligned block for $z_{\textsf{pre}}$ plus $q + 2m + 2$ further coordinates; an application that sizes $n_\text{words}$ with this in mind pays nothing for the merge, and one that does not sees $\ell_r$ grow by one. The queries are \eqref{eq:target-relation}, whose two operands land on the one merged oracle and add; IronSpartan's queries $(t_{\textsf{pre}}, s_{\textsf{pre}})$ on $z_{\textsf{pre}}$, $(t_{\textsf{wit}}, s_{\textsf{wit}})$ on $z_{\textsf{wit}}$, and its Libra query on $\pi_g$ (\S\ref{sec:ip-reduction}); and the compiler's Libra query on $\pi_h$. IronSpartan's segments carry no randomness of their own (\S\ref{sec:ironspartan-liop}); only its dummy constraints (\S\ref{sec:dummy-masking}) remain, since the products $(a, b, c)$ it reveals are its own messages. Compiling Stage~1 with Batched ZK BaseFold and leaving the BCS and Fiat--Shamir stages of \S\ref{sec:liop-to-snark} untouched yields a non-interactive zero-knowledge argument for the Binius64 relation in the random oracle model.
 
 \paragraph{Security.}
-The argument is honest-verifier zero-knowledge: a simulator with no access to the witness produces the transcript in three layers. The $N$ non-oracle messages and the target ciphertext $c$ are reproduced as uniform values, matching the honest distribution because each OTP key is uniform and used once. IronSpartan's portion is produced by its HVZK simulator (\S\ref{sec:zk-sumcheck-machinery}, Appendix~\ref{app:zk-sumcheck}), which simulates the masked constraint check, the dummy-masked products (\S\ref{sec:dummy-masking}), and the segment-query targets. Finally, the Batched ZK BaseFold simulator (\S\ref{sec:batched-zk-basefold}) reproduces the commit phase, the three opening phases, and the query phase of all merged oracles from the query targets alone, using the Libra mask for Phase~A, the pads for the evaluation claims, Phase~A$'$, and the opened symbols (under Lemma~\ref{lem:pad-independence}), and the masks $\omega_r$ for the folding phase. After Fiat--Shamir this is a non-interactive zero-knowledge argument in the random oracle model. Knowledge soundness and the soundness error are inherited from the inner LIOP, IronSpartan, and the compiler, increased only by the $O(J + \mathbf{n}) / |K|$ terms of the batching, masking, and composition steps.
+The argument is honest-verifier zero-knowledge: a simulator with no access to the witness produces the transcript in three layers. The $N$ non-oracle messages and the target ciphertext $c$ are reproduced as uniform values, matching the honest distribution because each OTP key is uniform and used once. IronSpartan's portion is produced by its HVZK simulator (\S\ref{sec:zk-sumcheck-machinery}, Appendix~\ref{app:zk-sumcheck}), which simulates the masked constraint check, the dummy-masked products (\S\ref{sec:dummy-masking}), and the segment-query targets. Finally, the Batched ZK BaseFold simulator (\S\ref{sec:batched-zk-basefold}) reproduces the commit phase, the three opening phases, and the query phase of all merged oracles from the query targets alone, using the Libra mask for Phase~A, the pads for the evaluation claims, Phase~A$'$, and the opened symbols (under Lemma~\ref{lem:pad-independence}), and the masks $\omega_r$ for the folding phase. After Fiat--Shamir this is a non-interactive zero-knowledge argument in the random oracle model. Knowledge soundness and the soundness error are inherited from the inner LIOP, IronSpartan, and the compiler, increased only by the $O(J + \boldsymbol{\ell}) / |K|$ terms of the batching, masking, and composition steps.
 
 \appendix
 
