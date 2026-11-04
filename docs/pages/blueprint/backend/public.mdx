@@ -8,7 +8,7 @@ Up to this point, we've postponed the verifier's actually checking the public po
 
 ## The Naïve Way
 
-We've already agreed to work within a [framework](/blueprint/commitment/) in which the verifier can read the prover's committed data $w$ at arbitrary positions. The most naïve possible public input check would direct the verifier to fully read the first $n_\text{public}$ words of $w$, and check whether they match $\textsf{public}$.
+We've already agreed to work within a [framework](/blueprint/commitment) in which the verifier can read the prover's committed data $w$ at arbitrary positions. The most naïve possible public input check would direct the verifier to fully read the first $n_\text{public}$ words of $w$, and check whether they match $\textsf{public}$.
 
 To achieve this, the verifier would need to query
 

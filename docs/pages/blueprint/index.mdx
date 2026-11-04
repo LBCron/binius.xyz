@@ -1,6 +1,5 @@
 import Collapsible from '../../components/Collapsible';
 
-import { Callout } from 'vocs/components';
 
 
 # Blueprint [Cryptographic details about our backend]
@@ -13,44 +12,44 @@ The complete protocol specification is now contained in the <a href="/spec.pdf" 
 
 We've split this site area into a few sections.
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Overview.**](overview) We start by recording a high-level summary of Binius64, targeting a cryptographic audience.
+[**Overview.**](/blueprint/overview) We start by recording a high-level summary of Binius64, targeting a cryptographic audience.
 
 At an extremely high level, Binius64 is a variant of SuperSpartan [[STW23](https://eprint.iacr.org/2023/552)] that operates over binary fields, and uses [[DP24](https://eprint.iacr.org/2024/504)] as its polynomial commitment scheme. We add native AND constraints by adapting ideas from Gruen [[Gru24](https://eprint.iacr.org/2024/108), § 5.1] and Hu et al. [[Hu+25](https://eprint.iacr.org/2025/717)], and use a GKR-based technique for unsigned integer multiplication. To handle shifts, we import and adapt an idea from [[DP25](https://eprint.iacr.org/2023/1784), § 4.3].
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Math Background.**](math) This section contains a crash course on the mathematical objects we use.
+[**Math Background.**](/blueprint/math) This section contains a crash course on the mathematical objects we use.
 
 Start here if you're new. We can't promise to cover everything, but it'll be a useful starting point.
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Constraint Systems.**](constraints) _Constraint systems_ are how we specify the computations we set about proving and verifying. Think somewhere in between "circuits" and "R1CS".
+[**Constraint Systems.**](/blueprint/constraints) _Constraint systems_ are how we specify the computations we set about proving and verifying. Think somewhere in between "circuits" and "R1CS".
 
 Binius64 introduces a new _constraint system language_ (i.e., a framework within which to specify constraint systems). Our constraint system language basically takes R1CS, makes it operate fundamentally on 64-bit unsigned integers, and moreover enriches it by natively supporting constraints that act upon (logical, arithmetic, etc.) _bitshifts_ of the available witness data. We also bake in support for unsigned, 64-bit integer multiplication.
 
 The constraint system language we get out is predictable and simple, but much more useful and efficient than plain, vanilla R1CS in characteristic 2.
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**The Backend.**](backend) Here, we fully explain our cryptographic backend. We record separate protocols for checking the prover's [AND](constraints/ands) and [MUL](constraints/muls) constraints. These two are very different; the first uses a variant of Gruen's univariate skip, while the second uses GKR. Internally, both protocols reduce to a common internal reduction target, called the _[shift reduction](backend/reduction)_.
+[**The Backend.**](/blueprint/backend) Here, we fully explain our cryptographic backend. We record separate protocols for checking the prover's [AND](/blueprint/constraints/ands) and [MUL](/blueprint/constraints/muls) constraints. These two are very different; the first uses a variant of Gruen's univariate skip, while the second uses GKR. Internally, both protocols reduce to a common internal reduction target, called the _[shift reduction](/blueprint/backend/reduction)_.
 
-Along the way, we need to develop a key technical idea, called _[shift indicators](backend/shifts)_. These let us capture bitshifts in an algebraically meaningful way.
+Along the way, we need to develop a key technical idea, called _[shift indicators](/blueprint/backend/shifts)_. These let us capture bitshifts in an algebraically meaningful way.
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Polynomial Commitment.**](commitment) The "lowermost" layer of our cryptographic stack deals with the assessment of evaluation claims about multilinear polynomials.
+[**Polynomial Commitment.**](/blueprint/commitment) The "lowermost" layer of our cryptographic stack deals with the assessment of evaluation claims about multilinear polynomials.
 
 We don't say a ton here. Mostly, we refer out to [[DP24](https://eprint.iacr.org/2024/504)], which describes in detail the polynomial commitment scheme that we use.
 </Collapsible>
-</Callout>
+:::

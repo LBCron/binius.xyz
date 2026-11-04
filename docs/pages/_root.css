@@ -1,0 +1,151 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap");
+
+@import "tailwindcss";
+/* Vocs 2 has no `.dark` class: dark mode is the inline `color-scheme` style on <html>. */
+@custom-variant dark (
+  &:where(
+    [style*=":dark"],
+    [style*=":dark"] *,
+    [style*=": dark"],
+    [style*=": dark"] *
+  )
+);
+
+@theme {
+  /* Custom colors from tailwind.config.cjs */
+  --color-offwhite: #f7f6ec;
+  --color-green: #ace5b9;
+  --color-orange: #f6c956;
+  --color-blue: #7bcde6;
+  --color-red: #f45a2a;
+  --color-slate: #1d272a;
+  --color-gunmetal: #82827d;
+}
+
+
+/*
+ * Vocs 2 theme overrides. Vocs derives its UI from `--vocs-*` design tokens
+ * (see vocs/src/styles/theme.css), so the Binius palette is applied by
+ * overriding them on :root with light-dark() (dark mode is the `color-scheme`
+ * set on <html>; there is no `.dark` class).
+ */
+:root {
+  --vocs-font-family: "IBM Plex Sans", sans-serif;
+
+  /* Page / sidebar background; content surface. */
+  --vocs-background-color-primary: light-dark(#f7f6ec, #161d20);
+  --vocs-background-color-surface: light-dark(#fff, #1d272a);
+  --vocs-background-color-surfaceMuted: light-dark(#efeee2, #1d272a);
+  --vocs-background-color-surfaceTint: light-dark(#1d272a0a, #ffffff0a);
+
+  --vocs-text-color-primary: light-dark(#4c4c4c, #cfcfcf);
+  --vocs-text-color-secondary: light-dark(#838383, #a7a7a8);
+  --vocs-text-color-heading: light-dark(#1d272a, #fff);
+  --vocs-text-color-link: var(--vocs-color-accent);
+  --vocs-text-color-link-hover: light-dark(#4c4c4c, #cfcfcf);
+
+  --vocs-border-color-primary: light-dark(#1d272a1a, #ffffff1a);
+  --vocs-border-color-secondary: light-dark(#1d272a1a, #ffffff1a);
+
+  --vocs-background-color-code-block: light-dark(#f7f7f7, #2b292d);
+  --vocs-background-color-inline-code: light-dark(#f7f7f7, #323035);
+
+  --vocs-text-h1: 40px;
+
+  /* Content column: 900px wide, as on the Vocs 1 site. */
+  --vocs-spacing-content: calc(900px + (var(--vocs-spacing-content-px) * 2));
+}
+
+body {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+/* Landing page */
+h1.lp-hero {
+  color: inherit;
+  font-family: "Newsreader", serif;
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 64px;
+  letter-spacing: -2px;
+}
+
+h1 em {
+  font-family: "Newsreader", serif;
+  font-style: italic;
+}
+
+.lp p {
+  font-size: 16px;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+
+.lp h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+}
+
+/* Callouts: no icon, extra padding (as on the Vocs 1 site). */
+[data-v-callout-icon] {
+  display: none;
+}
+
+aside[data-v-callout] {
+  padding: 16px 24px;
+  font-size: 16px;
+}
+
+/* Vocs reserves a gutter for the (hidden) icon. */
+aside[data-v-callout][data-v-content] > * {
+  padding-inline-start: 0;
+}
+
+aside[data-v-callout][data-v-context="note"] {
+  background-color: light-dark(#1d272a0a, #ffffff0a);
+  border-color: light-dark(#ddd, #ffffff0a);
+  color: light-dark(#000, #fff);
+}
+
+aside[data-v-callout][data-v-context="info"] {
+  background-color: light-dark(#f7f6ec, #f45a2a1a);
+  border-color: light-dark(#1d272a0a, #443f3e);
+  color: light-dark(#000, #fff);
+}
+
+/* KaTeX */
+.katex-display .katex {
+  font-size: 1.3em;
+}
+
+/* Horizontal scroll for KaTeX math blocks on mobile */
+@media (max-width: 768px) {
+  .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+@media (max-width: 600px) {
+  h1.lp-hero {
+    font-size: 60px;
+    line-height: 60px;
+  }
+
+  .shape-grid {
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+  }
+
+  .shape-grid .hidden-mobile {
+    display: none;
+  }
+}

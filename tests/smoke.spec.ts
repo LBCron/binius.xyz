@@ -3,19 +3,22 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
-const dist = path.join(root, "docs/dist");
+// Vocs 2 (Waku) writes the static site to <outDir>/public.
+const dist = path.join(root, "docs/dist/public");
 const pagesDir = path.join(root, "docs/pages");
 
 if (!fs.existsSync(path.join(dist, "index.html"))) {
-  throw new Error("docs/dist is missing: run a site build (vocs build) first.");
+  throw new Error("docs/dist/public is missing: run a site build (vocs build) first.");
 }
 
-// Every prerendered page: each docs/dist/**/index.html is a route.
+// Every prerendered page: each docs/dist/public/**/index.html is a route.
+// Skipped: assets, RSC payloads, and the `*.d` directories (`404.d`, `_root.d`)
+// that Waku emits next to the real pages.
 function discoverRoutes(dir = dist, prefix = ""): string[] {
   const routes: string[] = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (e.isDirectory()) {
-      if (e.name === "assets") continue;
+      if (e.name === "assets" || e.name === "RSC" || e.name.endsWith(".d")) continue;
       routes.push(...discoverRoutes(path.join(dir, e.name), `${prefix}/${e.name}`));
     } else if (e.name === "index.html") {
       routes.push(prefix || "/");
@@ -47,12 +50,6 @@ const routes = discoverRoutes();
 // rather than fixing site content in the test change.
 const KNOWN_BROKEN_LINKS = new Map<string, string>([]);
 
-// TODO(pre-existing bug, vocs 1.0.13): scrolling many pages (~50 of 67) throws
-// "Cannot read properties of undefined (reading 'id')" from the client (likely
-// the outline/scroll-spy). Not fixed here; remove this entry if the vocs
-// upgrade fixes it (the test then keeps guarding against regressions).
-const KNOWN_PAGEERRORS = ["Cannot read properties of undefined (reading 'id')"];
-
 const linkCache = new Map<string, number>();
 
 async function status(request: APIRequestContext, url: string) {
@@ -63,7 +60,7 @@ async function status(request: APIRequestContext, url: string) {
 }
 
 test("route discovery covers sidebar and landing page", async () => {
-  const config = fs.readFileSync(path.join(root, "vocs.config.tsx"), "utf8");
+  const config = fs.readFileSync(path.join(root, "vocs.config.ts"), "utf8");
   const sidebarLinks = [...config.matchAll(/link:\s*"(\/[^"]*)"/g)].map((m) => m[1].replace(/(.)\/$/, "$1"));
   expect(routes).toContain("/");
   const missing = sidebarLinks.filter((l) => !routes.includes(l));
@@ -74,7 +71,6 @@ for (const route of routes) {
   test(`page ${route}`, async ({ page }) => {
     const problems: string[] = [];
     page.on("pageerror", (e) => {
-      if (KNOWN_PAGEERRORS.some((k) => e.message.includes(k))) return;
       problems.push(`pageerror: ${e.message}`);
     });
     page.on("console", (m) => {
@@ -103,7 +99,7 @@ for (const route of routes) {
       window.scrollTo(0, 0);
     });
 
-    const content = page.locator("main, [data-v-content], .vocs_Content, article").first();
+    const content = page.locator("main").first();
     const body = await page.locator("body").innerText();
     expect(body.trim().length, "page body is empty").toBeGreaterThan(50);
     if (route !== "/") {
@@ -111,6 +107,8 @@ for (const route of routes) {
     }
 
     expect(await page.locator(".katex-error").count(), ".katex-error elements").toBe(0);
+    // Unrendered math: display math left as a raw code block / math element.
+    expect(await page.locator("code.language-math, .math-display, .math-inline").count(), "unrendered math").toBe(0);
     if (sourceHasMath(route)) {
       expect(await page.locator(".katex").count(), "source has math but no .katex rendered").toBeGreaterThan(0);
     }
@@ -156,12 +154,12 @@ test("dark mode toggle", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/basics/concepts");
-  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const light = page.locator("button:has([aria-label='Light Mode'])");
-  const dark = page.locator("button:has([aria-label='Dark Mode'])");
+  const bg = () => page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+  const light = page.getByRole("radio", { name: "Light theme" });
+  const dark = page.getByRole("radio", { name: "Dark theme" });
   await light.click();
   const lightBg = await bg();
   await dark.click();
-  await expect(dark).toHaveAttribute("data-active", "true");
+  await expect(dark).toBeChecked();
   await expect.poll(bg).not.toBe(lightBg);
 });

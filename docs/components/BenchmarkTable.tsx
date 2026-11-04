@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from 'react'
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -113,28 +115,30 @@ const BenchmarkTable: React.FC<BenchmarkTableProps> = ({ benchmarksExpected }) =
     if (!benchmarks) return <div>Loading...</div>;
 
     return (
-        <table className="vocs_Table">
-            <thead>
-                <tr className="vocs_TableRow">
-                    <th className="vocs_TableHeader">Operation</th>
-                    <th className="vocs_TableHeader">Count</th>
-                    <th className="vocs_TableHeader">Prove (s)</th>
-                    <th className="vocs_TableHeader">Verify (ms)</th>
-                    <th className="vocs_TableHeader">Proof Size (KiB)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {benchmarks.map((row, index) => (
-                    <tr key={index} className="vocs_TableRow">
-                        <td className="vocs_TableCell">{row.operation}</td>
-                        <td className="vocs_TableCell">{row.count}</td>
-                        <td className="vocs_TableCell">{row.prove}</td>
-                        <td className="vocs_TableCell">{row.verify}</td>
-                        <td className="vocs_TableCell">{row.proofSize}</td>
+        <div data-v-table-wrapper>
+            <table data-v="">
+                <thead>
+                    <tr>
+                        <th>Operation</th>
+                        <th>Count</th>
+                        <th>Prove (s)</th>
+                        <th>Verify (ms)</th>
+                        <th>Proof Size (KiB)</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {benchmarks.map((row, index) => (
+                        <tr key={index}>
+                            <td>{row.operation}</td>
+                            <td>{row.count}</td>
+                            <td>{row.prove}</td>
+                            <td>{row.verify}</td>
+                            <td>{row.proofSize}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 };
 

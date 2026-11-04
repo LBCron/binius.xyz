@@ -1,6 +1,5 @@
 import Collapsible from '../../components/Collapsible';
 
-import { Callout } from 'vocs/components';
 
 # Building [Everything you need to know to build end-to-end ZK applications with Binius64]
 
@@ -17,28 +16,28 @@ RUSTFLAGS="-C target-cpu=native" cargo run --release --example sha256
 
 We've broken up this guide into two main sections.
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**End-to-End Example.**](example) Here, we explain the overall, end-to-end flow of a Binius64 application, from setting up a project, to building a circuit, to generating and verifying proofs about it.
+[**End-to-End Example.**](/building/example) Here, we explain the overall, end-to-end flow of a Binius64 application, from setting up a project, to building a circuit, to generating and verifying proofs about it.
 
 We moreover show how each of these steps gets carried out in code, by dumping runnable snippets. Throughout, we focus on a classic, important cryptographic task (proving _knowledge-of-opening_ with respect to a simple, SHA-256-based commitment scheme).
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Circuits.**](circuits) Here, we dive more deeply into actually writing circuit code. We explain various tips and motifs that show up repeatedly in real applications.
+[**Circuits.**](/building/circuits) Here, we dive more deeply into actually writing circuit code. We explain various tips and motifs that show up repeatedly in real applications.
 
 We focus on recurring patterns like [branchless control flow](/building/circuits/control-flow) and [circuit composition](/building/circuits/composition). We also describe some [practical considerations](/building/circuits/performance) around performance.
 </Collapsible>
-</Callout>
+:::
 
-<Callout type="note">
+:::note
 <Collapsible>
-[**Tutorials.**](tutorials) Many code snippets in this guide have corresponding runnable examples in the repository. Throughout this site area, we occasionally link to these in blocks marked with the header **Try It.**
+[**Tutorials.**](/building/tutorials) Many code snippets in this guide have corresponding runnable examples in the repository. Throughout this site area, we occasionally link to these in blocks marked with the header **Try It.**
 
 These are all hosted in our repository, itself at [https://github.com/binius-zk/binius64](https://github.com/binius-zk/binius64). The [`prover/examples/examples/tutorials/`](https://github.com/binius-zk/binius64/tree/main/prover/examples/examples) directory of that repository contains examples that go beyond those covered here. We go into a bit more detail in this page.
 </Collapsible>
-</Callout>
+:::
 
 For cryptographic and mathematical details, see the [Blueprint](/blueprint) section.

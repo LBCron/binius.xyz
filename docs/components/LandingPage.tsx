@@ -1,7 +1,8 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
 import ArrowIcon from "./ArrowIcon";
-import SVG from "react-inlinesvg";
 
 const footerShapes = [
   { primary: "01.png", alt: "01-dark.png", hiddenMobile: false },
@@ -46,29 +47,32 @@ const LandingPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
+    // Vocs 2 sets the active scheme as an inline `color-scheme` on <html>
+    // ("light", "dark", or "light dark" meaning follow the OS).
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const checkDarkMode = () => {
-      setIsDarkMode(document.documentElement.classList.contains("dark"));
+      const scheme = document.documentElement.style.colorScheme;
+      setIsDarkMode(scheme === "dark" || (scheme !== "light" && mq.matches));
     };
 
     checkDarkMode();
 
-    const observer = new MutationObserver(() => {
-      checkDarkMode();
-    });
-
+    const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ["style"],
     });
+    mq.addEventListener("change", checkDarkMode);
 
     return () => {
       observer.disconnect();
+      mq.removeEventListener("change", checkDarkMode);
     };
   }, []);
 
   return (
-    <div>
-      <h1 className="text-center !mt-24 !mb-6">
+    <div className="lp text-slate dark:text-white">
+      <h1 className="lp-hero text-center !mt-24 !mb-6">
         Binary Proofs, <br className="lg:hidden" />
         Blazing Fast
       </h1>
