@@ -54,7 +54,6 @@ const KNOWN_BROKEN_LINKS = new Map<string, string>([]);
 const KNOWN_PAGEERRORS = ["Cannot read properties of undefined (reading 'id')"];
 
 const linkCache = new Map<string, number>();
-const linkSources = new Map<string, string>();
 
 async function status(request: APIRequestContext, url: string) {
   if (!linkCache.has(url)) {
@@ -72,9 +71,8 @@ test("route discovery covers sidebar and landing page", async () => {
 });
 
 for (const route of routes) {
-  test(`page ${route}`, async ({ page, request }) => {
+  test(`page ${route}`, async ({ page }) => {
     const problems: string[] = [];
-    const failedUrls = new Set<string>();
     page.on("pageerror", (e) => {
       if (KNOWN_PAGEERRORS.some((k) => e.message.includes(k))) return;
       problems.push(`pageerror: ${e.message}`);
@@ -118,22 +116,36 @@ for (const route of routes) {
     }
 
     expect(problems).toEqual([]);
-
-    const hrefs = await page.$$eval("a[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
-    for (const h of hrefs) {
-      const u = new URL(h);
-      if (u.origin !== "http://localhost:4173") continue;
-      u.hash = "";
-      if (!linkSources.has(u.pathname + u.search)) linkSources.set(u.pathname + u.search, route);
-    }
   });
 }
 
+// Same-origin link targets (path + query, no hash) found in the prerendered
+// HTML of every route, mapped to the first route that links to them. Parsed
+// statically from docs/dist so this test does not depend on the page tests.
+function collectLinks(): Map<string, string> {
+  const links = new Map<string, string>();
+  for (const route of routes) {
+    const file = path.join(dist, route, "index.html");
+    const html = fs.readFileSync(file, "utf8");
+    for (const tag of html.matchAll(/<a\s[^>]*>/gi)) {
+      const m = /\shref=(?:"([^"]*)"|'([^']*)')/i.exec(tag[0]);
+      const href = m && (m[1] ?? m[2]);
+      if (!href) continue;
+      const u = new URL(href.replace(/&amp;/g, "&"), `http://localhost:4173${route}`);
+      if (u.origin !== "http://localhost:4173") continue; // external, mailto:, etc.
+      const key = u.pathname + u.search;
+      if (!links.has(key)) links.set(key, route);
+    }
+  }
+  return links;
+}
+
 test("all same-origin links resolve (including /spec.pdf)", async ({ request }) => {
-  expect(linkSources.size, "no links collected; page tests must run first").toBeGreaterThan(0);
-  linkSources.set("/spec.pdf", "(required)");
+  const links = collectLinks();
+  expect(links.size, "no links found in built HTML").toBeGreaterThan(0);
+  links.set("/spec.pdf", "(required)");
   const broken: string[] = [];
-  for (const [url, from] of linkSources) {
+  for (const [url, from] of links) {
     const s = await status(request, url);
     if (s !== 200 && !KNOWN_BROKEN_LINKS.has(url)) broken.push(`${s} ${url} (first linked from ${from})`);
   }
