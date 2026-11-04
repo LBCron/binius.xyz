@@ -52,12 +52,12 @@ or in other words the unsigned addition of `x` and `y`.
 
 The interactive protocol argues constraint satisfaction through a sequence of interactive reductions that ultimately reduce all checks to a single witness evaluation. The protocol proceeds in several phases:
 
-- **Oracle Commitment.** The prover sends the witness [polynomial commitment](/blueprint/commitment/) to the verifier.
+- **Oracle Commitment.** The prover sends the witness [polynomial commitment](/blueprint/commitment) to the verifier.
 - **AND Constraint Reduction.** The prover and verifier use the [Rijndael zerocheck](/blueprint/backend/ands) to reduce AND constraints to evaluation claims on shifted witness values.
 - **MUL Constraint Reduction.** The prover and verifier use the [integer multiplication GKR protocol](/blueprint/backend/muls) to reduce multiplication constraints to evaluation claims on shifted witness values.
 - **Shift Reduction.** [A sumcheck protocol](/blueprint/backend/reduction) reduces evaluation claims on shifted values (from both MUL and AND constraints) to evaluation claims on the original witness.
 - **Public Input Check.** A [final sumcheck](/blueprint/backend/public) verifies that the witness correctly encodes the public constants and input/output values.
-- **Oracle Opening.** The verifier [queries](/blueprint/commitment/) the witness polynomial at a single point to complete verification.
+- **Oracle Opening.** The verifier [queries](/blueprint/commitment) the witness polynomial at a single point to complete verification.
 
 This is summarized in the diagram below:
 

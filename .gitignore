@@ -1,6 +1,10 @@
 node_modules
 dist/
 docs/dist/
-docs/public/spec.pdf
+public/spec.pdf
 .DS_Store
 **/.DS_Store
+test-results/
+playwright-report/
+result
+docs/pages.gen.ts

@@ -5,8 +5,8 @@ In this section, we explain how to build real circuits.
 Before we can do this, we need to [elaborate a few concepts](/building/circuits/introduction) that only exist in ZK. We need to explain what _wires_ are, for example, as well as the distinction between _public_ and _witness_ wires. Having done that, we turn to practical matters. We go through various motifs that arise repeatedly in practical circuit design.
 
 Here are the pages in this section:
-- [**Introduction.**](introduction) Here, we set up basic notions, like _wires_, and explain the distinction between _witness_ and _public_ wires. We also talk about _gates_ and _gadgets_.
-- [**Gadgets.**](gadgets) _Gadgets_ are reusable components designed to achieve common operations (like byte-manipulation and hashing). By composing these and wiring them together, we can quickly build complex cryptographic circuits.
-- [**Control Flow.**](control-flow) Circuits can't run if-statements and loops, like classic imperative programs can. Here, we explain how to port these patterns into the language of circuits. _Multiplexers_ will prove to be a key tool.
-- [**Composition.**](composition) _Composition_ is a key idea that lets us build large, complex circuits out of smaller ones by using smaller circuits as reusable components.
-- [**Performance.**](performance) Here, we sketch how to understand the costs of the circuits you build. We explain the various cost metrics that circuits have, like _number of witness values_ and _number of constraints_.
+- [**Introduction.**](/building/circuits/introduction) Here, we set up basic notions, like _wires_, and explain the distinction between _witness_ and _public_ wires. We also talk about _gates_ and _gadgets_.
+- [**Gadgets.**](/building/circuits/gadgets) _Gadgets_ are reusable components designed to achieve common operations (like byte-manipulation and hashing). By composing these and wiring them together, we can quickly build complex cryptographic circuits.
+- [**Control Flow.**](/building/circuits/control-flow) Circuits can't run if-statements and loops, like classic imperative programs can. Here, we explain how to port these patterns into the language of circuits. _Multiplexers_ will prove to be a key tool.
+- [**Composition.**](/building/circuits/composition) _Composition_ is a key idea that lets us build large, complex circuits out of smaller ones by using smaller circuits as reusable components.
+- [**Performance.**](/building/circuits/performance) Here, we sketch how to understand the costs of the circuits you build. We explain the various cost metrics that circuits have, like _number of witness values_ and _number of constraints_.

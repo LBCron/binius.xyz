@@ -1,4 +1,3 @@
-import { Callout } from 'vocs/components';
 
 # AWS Benchmarks Guide [How to reproduce Binius64 benchmark results in AWS]
 
@@ -83,10 +82,10 @@ ethsign_proof_verification/sig_1_msg_67_mt_x86_gfni_avx512
 EthSign proof size for 1 signatures, 67 max bytes: 267456 bytes
 ```
 
-<Callout type="tip">
+:::tip
   Tip: Note that adding `--no-default-features` turns off the multithreading. We report all our benchmarks for boths single- and multi-threaded performance.
-</Callout>
+:::
 
-<Callout type="tip">
+:::tip
   Tip: What if you're getting poor performance? You likely did not set the CPU flags correctly. Check out the benchmark logs and ensure that `Used & Enabled` list is not empty.
-</Callout>
+:::

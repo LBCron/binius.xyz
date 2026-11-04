@@ -1,78 +1,48 @@
-import { defineConfig } from "vocs";
+import { defineConfig } from "vocs/config";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import remarkMathDisplay from "./plugins/remarkMathDisplay.ts";
 
 export default defineConfig({
   title: "binius.xyz",
-  globalStyles: "docs/styles.css",
-  frontmatter: {
-    content: {
-      width: "70ch", // Default is 70ch, increase to make content wider
-    },
-  },
-  vite: {
-    plugins: [
+  // Canonical origin (binius.xyz redirects here); enables sitemap.xml.
+  baseUrl: "https://www.binius.xyz",
+  // Pages live in docs/pages; global styles in docs/pages/_root.css (loaded automatically).
+  srcDir: "docs",
+  outDir: "docs/dist",
+  // Prerender every page to static HTML (deployed to GitHub Pages).
+  renderStrategy: "full-static",
+  accentColor: "light-dark(#5753c6, #b1a9ff)",
+  head: {
+    // baseUrl would otherwise emit <base href>, which resolves every relative
+    // and #hash URL against the production origin (breaks local preview and
+    // in-page anchors). We only want baseUrl for sitemap/canonical URLs.
+    base: false,
+    link: [
       {
-        name: "disable-llms",
-        enforce: "pre",
-        configResolved(config) {
-          // Filter out the llms plugin to avoid build errors
-          const filteredPlugins = config.plugins.filter(
-            (p) => p.name !== "llms",
-          );
-          // @ts-ignore - we need to override readonly property
-          config.plugins = filteredPlugins;
-        },
+        rel: "stylesheet",
+        href: "https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css",
       },
     ],
-  },
-  head() {
-    return (
-      <>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
-        ></link>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-          if (location.pathname !== '/') {
-            document.documentElement.style.opacity = '0';
-            document.addEventListener('DOMContentLoaded', () => {
-              document.documentElement.style.opacity = '1';
-              document.documentElement.style.transition = 'opacity 0.1s';
-            });
-          }
-        `,
-          }}
-        />
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-TV9S6QP84Y"
-        ></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+    script: [
+      {
+        async: true,
+        src: "https://www.googletagmanager.com/gtag/js?id=G-TV9S6QP84Y",
+      },
+      {
+        innerHTML: `
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
 
           gtag('config', 'G-TV9S6QP84Y');
         `,
-          }}
-        />
-        <link
-          href="/favicon-light.png"
-          rel="icon"
-          media="(prefers-color-scheme: light)"
-        />
-        <link
-          href="/favicon-dark.png"
-          rel="icon"
-          media="(prefers-color-scheme: dark)"
-        />
-      </>
-    );
+      },
+    ],
+  },
+  iconUrl: {
+    light: "/favicon-light.png",
+    dark: "/favicon-dark.png",
   },
   logoUrl: {
     light: "/logo-light.svg",
@@ -80,7 +50,7 @@ export default defineConfig({
   },
   ogImageUrl: "https://www.binius.xyz/x-logo.png",
   markdown: {
-    remarkPlugins: [remarkMath],
+    remarkPlugins: [remarkMath, remarkMathDisplay],
     rehypePlugins: [rehypeKatex],
   },
   topNav: [

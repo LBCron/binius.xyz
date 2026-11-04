@@ -1,16 +1,17 @@
 repos:
   - repo: local
     hooks:
-      - id: npm-test
-        name: Run npm test
-        entry: npm test
-        language: system
-        pass_filenames: false
-        stages: [pre-commit]
-
+      # Order matters: the smoke test runs against the built site.
       - id: npm-build
         name: Run npm build
         entry: npm run build
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: npm-test
+        name: Run npm test (Playwright smoke test)
+        entry: npm test
         language: system
         pass_filenames: false
         stages: [pre-push]

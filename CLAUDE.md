@@ -24,8 +24,10 @@ npm run build
 # Preview production build
 npm run preview
 
-# Run tests (currently just exits with 0)
-npm test
+# Run the Playwright smoke test (needs a prior build, see below).
+# Browsers come from the nix dev shell (flake.nix); run via `nix develop`.
+# Without nix, run `npx playwright install chromium` once instead.
+nix develop -c npm test
 
 # --- Whitepaper ---
 # Build the PDF (runs pdflatex + biber via the Makefile)
@@ -49,10 +51,12 @@ The documentation is organized into four main sections:
 - **Benchmarks** (`/benchmarks`): Performance benchmarks and AWS deployment guides
 
 ### Key Files
-- `vocs.config.tsx`: Main configuration defining navigation, sidebar structure, and markdown processing
+- `vocs.config.ts`: Main configuration defining navigation, sidebar structure, and markdown processing
 - `docs/pages/`: MDX documentation files organized by section
 - `docs/components/`: Custom React components (LandingPage, BenchmarkTable, Collapsible, ArrowIcon)
-- `docs/styles.css`: Global styles and Tailwind configuration
+- `docs/pages/_root.css`: Global styles and Tailwind configuration (Vocs 2 loads it automatically; brand colors/fonts are applied by overriding Vocs `--vocs-*` tokens)
+- `plugins/remarkMathDisplay.ts`: remark plugin so display math survives Vocs 2's Shiki pass and reaches rehype-katex
+- `public/`: static assets (Vocs 2/Waku serves `<root>/public`), including the generated `spec.pdf`
 - `whitepaper/main.tex`: The Binius64 whitepaper / canonical protocol specification
 - `whitepaper/bibliography.bib`: Whitepaper references
 - `whitepaper/Makefile`: Builds `main.pdf` via `pdflatex` and `biber`
@@ -61,10 +65,9 @@ The documentation is organized into four main sections:
 
 ### Git Hooks
 The project uses [pre-commit](https://pre-commit.com) for managing git hooks:
-- **pre-commit**: Runs `npm test`
-- **pre-push**: Runs `npm run build`
+- **pre-push**: Runs `npm run build`, then `npm test` (the Playwright smoke test, which serves the built `docs/dist/public` via `vocs preview` and checks every page, so it must run after the build). Run the push inside `nix develop` so Playwright finds its browsers.
 
-These ensure the site builds successfully before code is committed or pushed.
+These ensure the site builds and renders cleanly before code is pushed. The smoke test's `@playwright/test` version is pinned exactly to the nixpkgs `playwright-driver` version; bump them together.
 
 To set up the hooks, install pre-commit and run:
 ```bash
@@ -72,12 +75,15 @@ pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
 ### Vocs Configuration Notes
-- Custom Vite plugin disables the `llms` plugin to avoid build errors
+- Vocs 2 (Waku-based): config file must be `vocs.config.ts` and import from `vocs/config`; `srcDir: "docs"`, `outDir: "docs/dist"`, `renderStrategy: "full-static"` (static site is written to `docs/dist/public`)
+- Components using React state/effects need `"use client"` (server components by default)
+- Dark mode is the `color-scheme` set on `<html>` (no `.dark` class); use `light-dark()` or Tailwind `dark:` (custom variant in `_root.css`)
+- Relative markdown links in `index.mdx` files are not rewritten by Vocs 2; use absolute paths there
 - Math support enabled through remark-math and rehype-katex plugins
 - Google Analytics tracking configured (G-TV9S6QP84Y)
-- Content width set to 70ch for optimal reading
+- Content width set to 900px via `--vocs-spacing-content` in `_root.css`
 
 ## Deployment
 - Pushes to the `main` branch trigger automatic deployment to GitHub Pages via the `.github/workflows/deploy.yml` workflow
-- The workflow builds the site (`npm run build`, uploading `docs/dist`) and separately builds the whitepaper PDF as a dated downloadable artifact
-- The `build` job installs TeX Live because `npm run build` compiles the whitepaper (`make -C whitepaper`) and copies it to `docs/public/spec.pdf`, served at `/spec.pdf`
+- The workflow builds the site (`npm run build`, uploading `docs/dist/public`) and separately builds the whitepaper PDF as a dated downloadable artifact
+- The `build` job installs TeX Live because `npm run build` compiles the whitepaper (`make -C whitepaper`) and copies it to `public/spec.pdf`, served at `/spec.pdf`
