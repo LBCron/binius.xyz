@@ -149,3 +149,10 @@ aside[data-v-callout][data-v-context="info"] {
     display: none;
   }
 }
+
+/* Hide the Vocs "Ask AI" pill and "Copy page for AI" button site-wide
+   (Vocs has no config switch; per page it is `showAskAi: false` frontmatter). */
+[data-v-ask-ai-container],
+[data-v-copy-for-ai] {
+  display: none;
+}
