@@ -52,8 +52,26 @@
 
   --vocs-text-h1: 40px;
 
-  /* Content column: 900px wide, as on the Vocs 1 site. */
-  --vocs-spacing-content: calc(900px + (var(--vocs-spacing-content-px) * 2));
+  /* Content column: up to 900px, as on the Vocs 1 site, but never wider than
+     fits between the sidebar and the outline. Vocs puts the sidebar and the
+     outline in gutters of max((100vw - content) / 2, sidebar), so once the
+     content is wider than 100vw - 2 * sidebar those gutters stop shrinking
+     and the outline is drawn on top of the content. The outline is a side
+     column only from 1376px (hard-coded in Vocs's Outline); below that only
+     the sidebar needs room. */
+  --vocs-spacing-content: calc(
+    min(900px, 100vw - var(--vocs-spacing-sidebar) - (var(--vocs-spacing-content-px) * 2)) +
+      (var(--vocs-spacing-content-px) * 2)
+  );
+}
+
+@media (width >= 1376px) {
+  :root {
+    --vocs-spacing-content: calc(
+      min(900px, 100vw - (var(--vocs-spacing-sidebar) * 2) - (var(--vocs-spacing-content-px) * 2)) +
+        (var(--vocs-spacing-content-px) * 2)
+    );
+  }
 }
 
 body {

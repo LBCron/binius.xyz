@@ -189,3 +189,22 @@ test("Ask AI and Copy page for AI are hidden", async ({ page }) => {
     for (const el of await els.all()) await expect(el, `"${text}" visible`).toBeHidden();
   }
 });
+
+// BINIUS-709: the outline (right column, from 1376px up) and sidebar must never
+// be drawn over the content column. Widths: just above the outline breakpoint,
+// where the side gutters are pinned to the sidebar width, around the point where
+// they start to grow, and very wide.
+for (const width of [1100, 1376, 1500, 1595, 1600, 2443]) {
+  test(`outline and sidebar do not overlap content at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("/basics");
+    const rect = async (sel: string) => page.locator(sel).first().boundingBox();
+    const content = (await rect("[data-v-content]"))!;
+    const sidebar = (await rect("[data-v-sidebar-container]"))!;
+    expect(sidebar.x + sidebar.width).toBeLessThanOrEqual(content.x + 0.5);
+    if (width >= 1376) {
+      const outline = (await rect("[data-v-gutter-right]"))!;
+      expect(outline.x).toBeGreaterThanOrEqual(content.x + content.width - 0.5);
+    }
+  });
+}
