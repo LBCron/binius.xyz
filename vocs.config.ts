@@ -5,6 +5,8 @@ import remarkMathDisplay from "./plugins/remarkMathDisplay.ts";
 
 export default defineConfig({
   title: "binius.xyz",
+  // Canonical origin (binius.xyz redirects here); enables sitemap.xml.
+  baseUrl: "https://www.binius.xyz",
   // Pages live in docs/pages; global styles in docs/pages/_root.css (loaded automatically).
   srcDir: "docs",
   outDir: "docs/dist",
@@ -12,6 +14,10 @@ export default defineConfig({
   renderStrategy: "full-static",
   accentColor: "light-dark(#5753c6, #b1a9ff)",
   head: {
+    // baseUrl would otherwise emit <base href>, which resolves every relative
+    // and #hash URL against the production origin (breaks local preview and
+    // in-page anchors). We only want baseUrl for sitemap/canonical URLs.
+    base: false,
     link: [
       {
         rel: "stylesheet",

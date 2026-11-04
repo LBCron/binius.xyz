@@ -168,3 +168,24 @@ test("landing page links to GitHub", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator('a[href="https://github.com/binius-zk"]')).toHaveCount(1);
 });
+
+// baseUrl must not emit <base href>: it would resolve every relative and #hash
+// URL against production (see the `head.base` comment in vocs.config.ts).
+test("no <base> tag; sitemap covers every page", async ({ request }) => {
+  const withBase = routes.filter((r) =>
+    /<base\b/i.test(fs.readFileSync(path.join(dist, r, "index.html"), "utf8")),
+  );
+  expect(withBase, "pages with a <base> tag").toEqual([]);
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  const locs = [...sitemap.matchAll(/<loc>https:\/\/www\.binius\.xyz([^<]*)<\/loc>/g)].map((m) => m[1] || "/");
+  expect(routes.filter((r) => r !== "/404" && !locs.includes(r)), "routes missing from sitemap").toEqual([]);
+});
+
+test("Ask AI and Copy page for AI are hidden", async ({ page }) => {
+  await page.goto("/blueprint/overview");
+  await page.waitForLoadState("networkidle");
+  for (const text of ["Ask AI", "Copy page"]) {
+    const els = page.getByText(text, { exact: false });
+    for (const el of await els.all()) await expect(el, `"${text}" visible`).toBeHidden();
+  }
+});
