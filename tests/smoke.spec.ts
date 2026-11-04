@@ -163,3 +163,8 @@ test("dark mode toggle", async ({ page }) => {
   await expect(dark).toBeChecked();
   await expect.poll(bg).not.toBe(lightBg);
 });
+
+test("landing page links to GitHub", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator('a[href="https://github.com/binius-zk"]')).toHaveCount(1);
+});
