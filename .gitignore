@@ -4,3 +4,6 @@ docs/dist/
 docs/public/spec.pdf
 .DS_Store
 **/.DS_Store
+test-results/
+playwright-report/
+result

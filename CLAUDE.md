@@ -24,8 +24,10 @@ npm run build
 # Preview production build
 npm run preview
 
-# Run tests (currently just exits with 0)
-npm test
+# Run the Playwright smoke test (needs a prior build, see below).
+# Browsers come from the nix dev shell (flake.nix); run via `nix develop`.
+# Without nix, run `npx playwright install chromium` once instead.
+nix develop -c npm test
 
 # --- Whitepaper ---
 # Build the PDF (runs pdflatex + biber via the Makefile)
@@ -61,10 +63,9 @@ The documentation is organized into four main sections:
 
 ### Git Hooks
 The project uses [pre-commit](https://pre-commit.com) for managing git hooks:
-- **pre-commit**: Runs `npm test`
-- **pre-push**: Runs `npm run build`
+- **pre-push**: Runs `npm run build`, then `npm test` (the Playwright smoke test, which serves the built `docs/dist` via `vocs preview` and checks every page, so it must run after the build). Run the push inside `nix develop` so Playwright finds its browsers.
 
-These ensure the site builds successfully before code is committed or pushed.
+These ensure the site builds and renders cleanly before code is pushed. The smoke test's `@playwright/test` version is pinned exactly to the nixpkgs `playwright-driver` version; bump them together.
 
 To set up the hooks, install pre-commit and run:
 ```bash
